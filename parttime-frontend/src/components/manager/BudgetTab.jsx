@@ -2,6 +2,38 @@ import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { AlertCircle, CheckSquare, Square, Clock, Edit2, Check, X, CalendarDays } from 'lucide-react';
 
+// Hàm parse chuỗi DATETIME từ MySQL trực tiếp, chống lệch múi giờ UTC trên server
+function parseMySqlDateTime(dateTimeStr) {
+    if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
+    const cleaned = String(dateTimeStr).replace('T', ' ').replace('Z', '').split('.')[0];
+    const [datePart, timePart] = cleaned.split(' ');
+    
+    let year = 0, month = 0, day = 0;
+    if (datePart) {
+        const parts = datePart.split('-');
+        if (parts.length === 3) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+        }
+    }
+
+    let hour = 0, minute = 0;
+    if (timePart) {
+        const timeParts = timePart.split(':');
+        if (timeParts.length >= 2) {
+            hour = parseInt(timeParts[0], 10);
+            minute = parseInt(timeParts[1], 10);
+        }
+    }
+
+    const dateKey = (year && month && day) 
+        ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` 
+        : '';
+
+    return { year, month, day, hour, minute, dateKey };
+}
+
 export default function BudgetTab({ week }) {
     const [budgetData, setBudgetData] = useState(null);
     const [lichLam, setLichLam] = useState([]);
@@ -55,16 +87,14 @@ export default function BudgetTab({ week }) {
         }
     };
 
-    // Hàm mới: Tính tổng quỹ lương của nguyên THÁNG hiện tại
+    // Hàm mới: Tính tổng quỹ lương của nguyên THÁNG hiện tại (chống lệch múi giờ khi tách chuỗi)
     const fetchMonthlyShifts = async (dateStr) => {
         try {
-            const date = new Date(dateStr);
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const lastDay = new Date(y, date.getMonth() + 1, 0).getDate();
+            const [y, m] = dateStr.split('-').map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
 
-            const start = `${y}-${m}-01`;
-            const end = `${y}-${m}-${lastDay}`;
+            const start = `${y}-${String(m).padStart(2, '0')}-01`;
+            const end = `${y}-${String(m).padStart(2, '0')}-${lastDay}`;
 
             const res = await axiosClient.get('/shifts', { 
                 params: { startDate: `${start} 00:00:00`, endDate: `${end} 23:59:59` } 
@@ -169,7 +199,7 @@ export default function BudgetTab({ week }) {
         statusTextColor = 'text-amber-600';
     }
 
-    const currentMonth = new Date(week.start).getMonth() + 1;
+    const currentMonth = week.start ? Number(week.start.split('-')[1]) : new Date().getMonth() + 1;
 
     return (
         <div className="space-y-6">
@@ -300,7 +330,8 @@ export default function BudgetTab({ week }) {
                                 <div className="flex-1 p-2 space-y-2 max-h-[220px] overflow-y-auto bg-gray-50 text-xs">
                                     {emp.shifts.length > 0 ? (
                                         emp.shifts.map((s, i) => {
-                                            const d = new Date(s.thoi_gian_bat_dau);
+                                            const startParsed = parseMySqlDateTime(s.thoi_gian_bat_dau);
+                                            const endParsed = parseMySqlDateTime(s.thoi_gian_ket_thuc);
                                             const isQ8 = s.id_chi_nhanh === 1;
                                             const shiftHours = Number(s.so_gio_lam_thuong) + Number(s.so_gio_tang_ca_dem);
                                             const tienCaLam = Number(s.luong_thuc_lanh);
@@ -312,8 +343,8 @@ export default function BudgetTab({ week }) {
                                                         isQ8 ? 'text-[#0B1E3F]' : 'text-gray-400 line-through'
                                                     }`}
                                                 >
-                                                    <span className="font-bold w-8">{d.getDate()}/{d.getMonth() + 1}</span>
-                                                    <span className="w-16 text-center">{d.getHours()}h - {new Date(s.thoi_gian_ket_thuc).getHours()}h</span>
+                                                    <span className="font-bold w-8">{startParsed.day}/{startParsed.month}</span>
+                                                    <span className="w-16 text-center">{startParsed.hour}h - {endParsed.hour}h</span>
                                                     <div className="flex items-center gap-1 w-14 justify-center">
                                                         <span className="text-[10px] text-gray-500">({shiftHours}h)</span>
                                                         <span className={`font-bold px-1 rounded text-[10px] ${

@@ -3,6 +3,38 @@ import axiosClient from '../../api/axiosClient';
 import { AuthContext } from '../../context/AuthContext';
 import { Clock, Banknote, CalendarDays, Receipt, Calendar } from 'lucide-react';
 
+// Hàm parse chuỗi DATETIME từ MySQL trực tiếp, chống lệch múi giờ UTC
+function parseMySqlDateTime(dateTimeStr) {
+    if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
+    const cleaned = String(dateTimeStr).replace('T', ' ').replace('Z', '').split('.')[0];
+    const [datePart, timePart] = cleaned.split(' ');
+    
+    let year = 0, month = 0, day = 0;
+    if (datePart) {
+        const parts = datePart.split('-');
+        if (parts.length === 3) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+        }
+    }
+
+    let hour = 0, minute = 0;
+    if (timePart) {
+        const timeParts = timePart.split(':');
+        if (timeParts.length >= 2) {
+            hour = parseInt(timeParts[0], 10);
+            minute = parseInt(timeParts[1], 10);
+        }
+    }
+
+    const dateKey = (year && month && day) 
+        ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` 
+        : '';
+
+    return { year, month, day, hour, minute, dateKey };
+}
+
 export default function EmployeeSalaryTab({ week }) {
     const { user } = useContext(AuthContext);
     const [myShifts, setMyShifts] = useState([]);
@@ -32,7 +64,11 @@ export default function EmployeeSalaryTab({ week }) {
             });
 
             const personalShifts = filterMyShifts(resWeek.data);
-            personalShifts.sort((a, b) => new Date(a.thoi_gian_bat_dau) - new Date(b.thoi_gian_bat_dau));
+            personalShifts.sort((a, b) => {
+                const pA = parseMySqlDateTime(a.thoi_gian_bat_dau);
+                const pB = parseMySqlDateTime(b.thoi_gian_bat_dau);
+                return new Date(pA.year, pA.month - 1, pA.day, pA.hour, pA.minute) - new Date(pB.year, pB.month - 1, pB.day, pB.hour, pB.minute);
+            });
             setMyShifts(personalShifts);
 
             let tongG = 0;
@@ -43,13 +79,11 @@ export default function EmployeeSalaryTab({ week }) {
             });
             setStats({ tongGio: tongG, tongTien: tongT });
 
-            // 2. Lấy dữ liệu cho cả THÁNG (để tính tổng tháng)
-            const date = new Date(week.start);
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const lastDay = new Date(y, date.getMonth() + 1, 0).getDate();
-            const monthStart = `${y}-${m}-01`;
-            const monthEnd = `${y}-${m}-${lastDay}`;
+            // 2. Lấy dữ liệu cho cả THÁNG (để tính tổng tháng) bằng cách tách chuỗi an toàn chống lệch múi giờ
+            const [y, m] = week.start ? week.start.split('-').map(Number) : [new Date().getFullYear(), new Date().getMonth() + 1];
+            const lastDay = new Date(y, m, 0).getDate();
+            const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+            const monthEnd = `${y}-${String(m).padStart(2, '0')}-${lastDay}`;
 
             const resMonth = await axiosClient.get('/shifts', {
                 params: { startDate: `${monthStart} 00:00:00`, endDate: `${monthEnd} 23:59:59` }
@@ -69,7 +103,7 @@ export default function EmployeeSalaryTab({ week }) {
         }
     };
 
-    const currentMonthNumber = new Date(week.start).getMonth() + 1;
+    const currentMonthNumber = week.start ? Number(week.start.split('-')[1]) : new Date().getMonth() + 1;
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -128,10 +162,15 @@ export default function EmployeeSalaryTab({ week }) {
                 <div className="p-4 space-y-3">
                     {myShifts.length > 0 ? (
                         myShifts.map((ca, index) => {
-                            const date = new Date(ca.thoi_gian_bat_dau);
+                            const startParsed = parseMySqlDateTime(ca.thoi_gian_bat_dau);
+                            const endParsed = parseMySqlDateTime(ca.thoi_gian_ket_thuc);
+                            
+                            const localDateObj = new Date(startParsed.year, startParsed.month - 1, startParsed.day);
                             const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-                            const hStart = date.getHours();
-                            const hEnd = new Date(ca.thoi_gian_ket_thuc).getHours();
+                            const dayOfWeekStr = dayNames[localDateObj.getDay()];
+
+                            const hStart = startParsed.hour;
+                            const hEnd = endParsed.hour;
                             const shiftHours = Number(ca.so_gio_lam_thuong || 0) + Number(ca.so_gio_tang_ca_dem || 0);
                             const isQ8 = ca.id_chi_nhanh === 1;
 
@@ -140,13 +179,13 @@ export default function EmployeeSalaryTab({ week }) {
                                     {/* Ngày Tháng */}
                                     <div className="flex items-center gap-4 w-full sm:w-1/3">
                                         <div className="bg-blue-50 text-blue-700 w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0">
-                                            <span className="text-[10px] font-bold uppercase">{dayNames[date.getDay()]}</span>
-                                            <span className="text-lg font-black leading-none">{date.getDate()}</span>
+                                            <span className="text-[10px] font-bold uppercase">{dayOfWeekStr}</span>
+                                            <span className="text-lg font-black leading-none">{startParsed.day}</span>
                                         </div>
                                         <div>
                                             <p className="text-sm font-extrabold text-gray-800">{hStart}h:00 - {hEnd}h:00</p>
                                             <p className="text-xs font-semibold text-gray-500 mt-0.5 flex items-center gap-1">
-                                                <CalendarDays size={12}/> Tháng {date.getMonth() + 1}
+                                                <CalendarDays size={12}/> Tháng {startParsed.month}
                                             </p>
                                         </div>
                                     </div>
