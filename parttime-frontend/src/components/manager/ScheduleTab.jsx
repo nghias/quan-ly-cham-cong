@@ -2,41 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { X, Save, Trash2, Clock, Plus, Settings, Edit, Check } from 'lucide-react';
 
-// Hàm chuẩn hóa thời gian theo chuẩn múi giờ Việt Nam (Asia/Ho_Chi_Minh - UTC+7)
-function getVietnamTime(dateStr) {
-    if (!dateStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0 };
-    const date = new Date(dateStr);
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric',
-        hour12: false
-    });
-    const parts = formatter.formatToParts(date);
-    const getPart = (type) => parseInt(parts.find(p => p.type === type)?.value || 0, 10);
-    let hour = getPart('hour');
-    if (hour === 24) hour = 0;
-    return {
-        year: getPart('year'),
-        month: getPart('month'),
-        day: getPart('day'),
-        hour: hour,
-        minute: getPart('minute')
-    };
-}
+// Hàm parse chuỗi DATETIME từ MySQL trực tiếp, chống lệch múi giờ UTC trên server
+function parseMySqlDateTime(dateTimeStr) {
+    if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
+    const cleaned = String(dateTimeStr).replace('T', ' ').replace('Z', '').split('.')[0];
+    const [datePart, timePart] = cleaned.split(' ');
+    
+    let year = 0, month = 0, day = 0;
+    if (datePart) {
+        const parts = datePart.split('-');
+        if (parts.length === 3) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+        }
+    }
 
-function formatDateKeyVN(dateObj) {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-    return formatter.format(dateObj);
+    let hour = 0, minute = 0;
+    if (timePart) {
+        const timeParts = timePart.split(':');
+        if (timeParts.length >= 2) {
+            hour = parseInt(timeParts[0], 10);
+            minute = parseInt(timeParts[1], 10);
+        }
+    }
+
+    const dateKey = (year && month && day) 
+        ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` 
+        : '';
+
+    return { year, month, day, hour, minute, dateKey };
 }
 
 // Component con lăn chọn giờ/phút
@@ -237,6 +232,13 @@ export default function ScheduleTab({ week }) {
         return dates;
     };
 
+    const formatDateKey = (dateObj) => {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
     const weekDates = getWeekDates(week.start);
 
     useEffect(() => {
@@ -423,17 +425,17 @@ export default function ScheduleTab({ week }) {
         }
         setModalMode('edit');
         setSelectedShiftId(shift.id);
-        const { hour: startH, minute: startM } = getVietnamTime(shift.thoi_gian_bat_dau);
-        const { hour: endH, minute: endM } = getVietnamTime(shift.thoi_gian_ket_thuc);
+        const startParsed = parseMySqlDateTime(shift.thoi_gian_bat_dau);
+        const endParsed = parseMySqlDateTime(shift.thoi_gian_ket_thuc);
 
         setFormData({
             id_nguoi_dung: nhanVien.id,
             ho_ten: nhanVien.ho_ten,
             ngay_lam: dateKey,
-            gio_bat_dau_h: startH,
-            gio_bat_dau_m: startM,
-            gio_ket_thuc_h: endH,
-            gio_ket_thuc_m: endM,
+            gio_bat_dau_h: startParsed.hour,
+            gio_bat_dau_m: startParsed.minute,
+            gio_ket_thuc_h: endParsed.hour,
+            gio_ket_thuc_m: endParsed.minute,
             id_chi_nhanh: shift.id_chi_nhanh.toString()
         });
         setIsModalOpen(true);
@@ -472,7 +474,7 @@ export default function ScheduleTab({ week }) {
             finalEndH = 0;
             const d = new Date(formData.ngay_lam);
             d.setDate(d.getDate() + 1);
-            endDateStr = formatDateKeyVN(d);
+            endDateStr = formatDateKey(d);
         }
 
         const eHStr = String(finalEndH).padStart(2, '0');
@@ -543,10 +545,12 @@ export default function ScheduleTab({ week }) {
 
     const shiftsByUserIdAndDate = lichLam.reduce((acc, ca) => {
         if (!acc[ca.id_nguoi_dung]) acc[ca.id_nguoi_dung] = {};
-        const vnTime = getVietnamTime(ca.thoi_gian_bat_dau);
-        const dateKey = `${vnTime.year}-${String(vnTime.month).padStart(2, '0')}-${String(vnTime.day).padStart(2, '0')}`;
-        if (!acc[ca.id_nguoi_dung][dateKey]) acc[ca.id_nguoi_dung][dateKey] = [];
-        acc[ca.id_nguoi_dung][dateKey].push(ca);
+        const parsed = parseMySqlDateTime(ca.thoi_gian_bat_dau);
+        const dateKey = parsed.dateKey;
+        if (dateKey) {
+            if (!acc[ca.id_nguoi_dung][dateKey]) acc[ca.id_nguoi_dung][dateKey] = [];
+            acc[ca.id_nguoi_dung][dateKey].push(ca);
+        }
         return acc;
     }, {});
 
@@ -601,7 +605,7 @@ export default function ScheduleTab({ week }) {
                                             return (
                                                 <td 
                                                     key={index} 
-                                                    onClick={() => handleCellClickRegistration(nv, formatDateKeyVN(date), existingReg)}
+                                                    onClick={() => handleCellClickRegistration(nv, formatDateKey(date), existingReg)}
                                                     className={`p-1 align-middle min-h-[45px] cursor-pointer group-hover:bg-slate-100/60 transition-colors ${index < 6 ? 'border-r border-gray-200' : ''}`}
                                                     title="Nhấp để đăng ký / chỉnh sửa"
                                                 >
@@ -657,7 +661,7 @@ export default function ScheduleTab({ week }) {
                                     </td>
                                     
                                     {weekDates.map((date, index) => {
-                                        const dKey = formatDateKeyVN(date);
+                                        const dKey = formatDateKey(date);
                                         const shiftsOnThisDay = shiftsByUserIdAndDate[nv.id]?.[dKey] || [];
                                         
                                         return (
@@ -670,11 +674,11 @@ export default function ScheduleTab({ week }) {
                                                     {shiftsOnThisDay.length > 0 ? (
                                                         <>
                                                             {shiftsOnThisDay.map((s, si) => {
-                                                                const { hour: sH, minute: sM } = getVietnamTime(s.thoi_gian_bat_dau);
-                                                                const { hour: eH, minute: eM } = getVietnamTime(s.thoi_gian_ket_thuc);
+                                                                const startParsed = parseMySqlDateTime(s.thoi_gian_bat_dau);
+                                                                const endParsed = parseMySqlDateTime(s.thoi_gian_ket_thuc);
 
-                                                                const sStr = sM > 0 ? `${sH}h${String(sM).padStart(2, '0')}` : `${sH}h`;
-                                                                const eStr = eM > 0 ? `${eH}h${String(eM).padStart(2, '0')}` : `${eH}h`;
+                                                                const sStr = startParsed.minute > 0 ? `${startParsed.hour}h${String(startParsed.minute).padStart(2, '0')}` : `${startParsed.hour}h`;
+                                                                const eStr = endParsed.minute > 0 ? `${endParsed.hour}h${String(endParsed.minute).padStart(2, '0')}` : `${endParsed.hour}h`;
 
                                                                 return (
                                                                     <div 
