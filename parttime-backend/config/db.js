@@ -12,7 +12,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
+    port: process.env.DB_PORT || 4000, // Mặc định port của TiDB Cloud là 4000
     ssl: {
         ca: caCert,
         rejectUnauthorized: true // Bắt buộc bật để xác thực bảo mật với TiDB
