@@ -10,7 +10,7 @@ const pool = mysql.createPool({
     port: Number(process.env.DB_PORT) || 4000, // Cổng 4000 đặt đúng chỗ port
     ssl: {
         minVersion: 'TLSv1.2',
-        ca: fs.readFileSync(path.join(__dirname, process.env.CA_FILE_NAME || 'isrgrootx1.pem'))
+        ca: fs.readFileSync(path.join(__dirname, process.env.CA_FILE_NAME || '../isrgrootx1.pem'))
     }
 });
 
