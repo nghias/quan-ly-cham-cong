@@ -2,7 +2,44 @@ import React, { useState, useEffect, useRef } from 'react';
 import axiosClient from '../../api/axiosClient';
 import { X, Save, Trash2, Clock, Plus, Settings, Edit, Check } from 'lucide-react';
 
-// Component con lăn chọn giờ/phút (Đã fix lỗi passive event listener)
+// Hàm chuẩn hóa thời gian theo chuẩn múi giờ Việt Nam (Asia/Ho_Chi_Minh - UTC+7)
+function getVietnamTime(dateStr) {
+    if (!dateStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0 };
+    const date = new Date(dateStr);
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(date);
+    const getPart = (type) => parseInt(parts.find(p => p.type === type)?.value || 0, 10);
+    let hour = getPart('hour');
+    if (hour === 24) hour = 0;
+    return {
+        year: getPart('year'),
+        month: getPart('month'),
+        day: getPart('day'),
+        hour: hour,
+        minute: getPart('minute')
+    };
+}
+
+function formatDateKeyVN(dateObj) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    return formatter.format(dateObj);
+}
+
+// Component con lăn chọn giờ/phút
 function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, minHour = 0, maxHour = 23 }) {
     const [isEditingH, setIsEditingH] = useState(false);
     const [tempH, setTempH] = useState(String(hour).padStart(2, '0'));
@@ -25,7 +62,6 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
         setTempM(String(minute).padStart(2, '0'));
     }, [minute]);
 
-    // Gắn sự kiện native wheel với { passive: false } để ngăn cuộn trang phía sau
     useEffect(() => {
         const hourEl = hourContainerRef.current;
         const minuteEl = minuteContainerRef.current;
@@ -79,16 +115,16 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
     const nextM = minute + 15 > 59 ? 0 : minute + 15;
 
     return (
-        <div className="space-y-1.5">
-            <label className="block text-[11px] font-extrabold text-gray-500 uppercase text-center">{label}</label>
-            <div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-3 shadow-inner">
+        <div className="space-y-1">
+            <label className="block text-[10px] font-extrabold text-gray-500 uppercase text-center">{label}</label>
+            <div className="flex items-center justify-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-2 shadow-inner">
                 
                 {/* WHEEL GIỜ */}
-                <div ref={hourContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize py-1 px-2">
-                    <div onClick={() => onHourChange(prevH)} className="text-gray-300 text-sm font-semibold transition hover:text-gray-500 py-0.5 select-none cursor-pointer">
+                <div ref={hourContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1">
+                    <div onClick={() => onHourChange(prevH)} className="text-gray-300 text-xs font-semibold transition hover:text-gray-500 py-0.5 cursor-pointer">
                         {String(prevH).padStart(2, '0')}
                     </div>
-                    <div className="py-1">
+                    <div>
                         {isEditingH ? (
                             <input 
                                 type="number"
@@ -97,30 +133,30 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
                                 onChange={(e) => setTempH(e.target.value)}
                                 onBlur={handleBlurH}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }}
-                                className="w-12 bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none"
+                                className="w-10 bg-white border-2 border-blue-500 rounded-lg text-base font-black text-[#0B1E3F] text-center outline-none"
                             />
                         ) : (
                             <div 
                                 onClick={() => setIsEditingH(true)}
-                                className="text-2xl font-black text-[#0B1E3F] tracking-wider bg-white px-2.5 py-0.5 rounded-xl border border-gray-200 shadow-xs hover:border-blue-400 transition cursor-pointer"
+                                className="text-xl font-black text-[#0B1E3F] bg-white px-2 py-0.5 rounded-lg border border-gray-200 shadow-xs hover:border-blue-400 transition cursor-pointer"
                             >
                                 {String(hour).padStart(2, '0')}
                             </div>
                         )}
                     </div>
-                    <div onClick={() => onHourChange(nextH)} className="text-gray-300 text-sm font-semibold transition hover:text-gray-500 py-0.5 select-none cursor-pointer">
+                    <div onClick={() => onHourChange(nextH)} className="text-gray-300 text-xs font-semibold transition hover:text-gray-500 py-0.5 cursor-pointer">
                         {String(nextH).padStart(2, '0')}
                     </div>
                 </div>
 
-                <span className="font-black text-gray-400 text-xl pb-1">:</span>
+                <span className="font-black text-gray-400 text-lg pb-0.5">:</span>
 
                 {/* WHEEL PHÚT */}
-                <div ref={minuteContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize py-1 px-2">
-                    <div onClick={() => onMinuteChange(prevM)} className="text-gray-300 text-sm font-semibold transition hover:text-gray-500 py-0.5 select-none cursor-pointer">
+                <div ref={minuteContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1">
+                    <div onClick={() => onMinuteChange(prevM)} className="text-gray-300 text-xs font-semibold transition hover:text-gray-500 py-0.5 cursor-pointer">
                         {String(prevM).padStart(2, '0')}
                     </div>
-                    <div className="py-1">
+                    <div>
                         {isEditingM ? (
                             <input 
                                 type="number"
@@ -129,18 +165,18 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
                                 onChange={(e) => setTempM(e.target.value)}
                                 onBlur={handleBlurM}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }}
-                                className="w-12 bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none"
+                                className="w-10 bg-white border-2 border-blue-500 rounded-lg text-base font-black text-[#0B1E3F] text-center outline-none"
                             />
                         ) : (
                             <div 
                                 onClick={() => setIsEditingM(true)}
-                                className="text-2xl font-black text-[#0B1E3F] tracking-wider bg-white px-2.5 py-0.5 rounded-xl border border-gray-200 shadow-xs hover:border-blue-400 transition cursor-pointer"
+                                className="text-xl font-black text-[#0B1E3F] bg-white px-2 py-0.5 rounded-lg border border-gray-200 shadow-xs hover:border-blue-400 transition cursor-pointer"
                             >
                                 {String(minute).padStart(2, '0')}
                             </div>
                         )}
                     </div>
-                    <div onClick={() => onMinuteChange(nextM)} className="text-gray-300 text-sm font-semibold transition hover:text-gray-500 py-0.5 select-none cursor-pointer">
+                    <div onClick={() => onMinuteChange(nextM)} className="text-gray-300 text-xs font-semibold transition hover:text-gray-500 py-0.5 cursor-pointer">
                         {String(nextM).padStart(2, '0')}
                     </div>
                 </div>
@@ -159,17 +195,14 @@ export default function ScheduleTab({ week }) {
     const userRole = (localStorage.getItem('vai_tro') || '').trim().toUpperCase();
     const isManager = userRole === 'QUAN_LY' || userRole === 'QUẢN LÝ' || userRole === 'ADMIN' || userRole === 'MANAGER';
 
-    // Trạng thái Modal Xếp Lịch Làm Thực Tế (Mục 2)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [selectedShiftId, setSelectedShiftId] = useState(null);
 
-    // Trạng thái Modal Đăng Ký Nguyện Vọng (Mục 1)
     const [isRegModalOpen, setIsRegModalOpen] = useState(false);
     const [regModalMode, setRegModalMode] = useState('add');
     const [selectedRegId, setSelectedRegId] = useState(null);
 
-    // Trạng thái Modal Quản Lý Chi Nhánh
     const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
     const [branchForm, setBranchForm] = useState({ 
         id: '', 
@@ -202,13 +235,6 @@ export default function ScheduleTab({ week }) {
             currentDate.setDate(currentDate.getDate() + 1);
         }
         return dates;
-    };
-
-    const formatDateKey = (dateObj) => {
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const d = String(dateObj.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
     };
 
     const weekDates = getWeekDates(week.start);
@@ -250,12 +276,8 @@ export default function ScheduleTab({ week }) {
                 const dayOfWeek = new Date(curr.ngay_dang_ky).getDay();
                 const dayKey = dayOfWeek === 0 ? 'cn' : `t${dayOfWeek + 1}`;
                 
-                const dStart = new Date(`1970-01-01T${curr.gio_bat_dau}`);
-                const dEnd = new Date(`1970-01-01T${curr.gio_ket_thuc}`);
-                const sH = dStart.getHours();
-                const sM = dStart.getMinutes();
-                const eH = dEnd.getHours();
-                const eM = dEnd.getMinutes();
+                const [sH, sM] = curr.gio_bat_dau.split(':').map(Number);
+                const [eH, eM] = curr.gio_ket_thuc.split(':').map(Number);
 
                 const sStr = sM > 0 ? `${sH}h${String(sM).padStart(2, '0')}` : `${sH}h`;
                 const eStr = eM > 0 ? `${eH}h${String(eM).padStart(2, '0')}` : `${eH}h`;
@@ -278,21 +300,20 @@ export default function ScheduleTab({ week }) {
         }
     };
 
-    // --- XỬ LÝ SỰ KIỆN MỤC 1: ĐĂNG KÝ NGUYỆN VỌNG ---
     const handleCellClickRegistration = (nhanVien, dateKey, existingReg) => {
         if (existingReg) {
             setRegModalMode('edit');
             setSelectedRegId(existingReg.id);
-            const dStart = new Date(`${existingReg.ngay_dang_ky.split('T')[0]} ${existingReg.gio_bat_dau}`);
-            const dEnd = new Date(`${existingReg.ngay_dang_ky.split('T')[0]} ${existingReg.gio_ket_thuc}`);
+            const [sH, sM] = existingReg.gio_bat_dau.split(':').map(Number);
+            const [eH, eM] = existingReg.gio_ket_thuc.split(':').map(Number);
             setFormData({
                 id_nguoi_dung: nhanVien.id,
                 ho_ten: nhanVien.ho_ten,
                 ngay_lam: dateKey,
-                gio_bat_dau_h: isNaN(dStart.getHours()) ? 8 : dStart.getHours(),
-                gio_bat_dau_m: isNaN(dStart.getMinutes()) ? 0 : dStart.getMinutes(),
-                gio_ket_thuc_h: isNaN(dEnd.getHours()) ? 22 : dEnd.getHours(),
-                gio_ket_thuc_m: isNaN(dEnd.getMinutes()) ? 0 : dEnd.getMinutes(),
+                gio_bat_dau_h: isNaN(sH) ? 8 : sH,
+                gio_bat_dau_m: isNaN(sM) ? 0 : sM,
+                gio_ket_thuc_h: isNaN(eH) ? 22 : eH,
+                gio_ket_thuc_m: isNaN(eM) ? 0 : eM,
                 id_chi_nhanh: formData.id_chi_nhanh
             });
         } else {
@@ -375,7 +396,6 @@ export default function ScheduleTab({ week }) {
         }
     };
 
-    // --- XỬ LÝ SỰ KIỆN MỤC 2: LỊCH LÀM VIỆC THỰC TẾ ---
     const handleOpenAdd = (nhanVien, dateKey) => {
         if (!isManager) {
             alert("Chỉ có quản lý mới được phép xếp lịch làm việc thực tế!");
@@ -403,17 +423,17 @@ export default function ScheduleTab({ week }) {
         }
         setModalMode('edit');
         setSelectedShiftId(shift.id);
-        const dStart = new Date(shift.thoi_gian_bat_dau);
-        const dEnd = new Date(shift.thoi_gian_ket_thuc);
+        const { hour: startH, minute: startM } = getVietnamTime(shift.thoi_gian_bat_dau);
+        const { hour: endH, minute: endM } = getVietnamTime(shift.thoi_gian_ket_thuc);
 
         setFormData({
             id_nguoi_dung: nhanVien.id,
             ho_ten: nhanVien.ho_ten,
             ngay_lam: dateKey,
-            gio_bat_dau_h: dStart.getHours(),
-            gio_bat_dau_m: dStart.getMinutes(),
-            gio_ket_thuc_h: dEnd.getHours(),
-            gio_ket_thuc_m: dEnd.getMinutes(),
+            gio_bat_dau_h: startH,
+            gio_bat_dau_m: startM,
+            gio_ket_thuc_h: endH,
+            gio_ket_thuc_m: endM,
             id_chi_nhanh: shift.id_chi_nhanh.toString()
         });
         setIsModalOpen(true);
@@ -452,7 +472,7 @@ export default function ScheduleTab({ week }) {
             finalEndH = 0;
             const d = new Date(formData.ngay_lam);
             d.setDate(d.getDate() + 1);
-            endDateStr = formatDateKey(d);
+            endDateStr = formatDateKeyVN(d);
         }
 
         const eHStr = String(finalEndH).padStart(2, '0');
@@ -493,7 +513,6 @@ export default function ScheduleTab({ week }) {
         }
     };
 
-    // --- QUẢN LÝ CHI NHÁNH ---
     const handleSaveBranch = async (e) => {
         e.preventDefault();
         try {
@@ -524,40 +543,40 @@ export default function ScheduleTab({ week }) {
 
     const shiftsByUserIdAndDate = lichLam.reduce((acc, ca) => {
         if (!acc[ca.id_nguoi_dung]) acc[ca.id_nguoi_dung] = {};
-        const dateKey = formatDateKey(new Date(ca.thoi_gian_bat_dau));
+        const vnTime = getVietnamTime(ca.thoi_gian_bat_dau);
+        const dateKey = `${vnTime.year}-${String(vnTime.month).padStart(2, '0')}-${String(vnTime.day).padStart(2, '0')}`;
         if (!acc[ca.id_nguoi_dung][dateKey]) acc[ca.id_nguoi_dung][dateKey] = [];
         acc[ca.id_nguoi_dung][dateKey].push(ca);
         return acc;
     }, {});
 
-    // Lọc bỏ Ngọc và Hiền khỏi Bảng Đăng Ký Lịch Làm (Mục 1)
     const nhanVienDangKyList = nhanVienList.filter(nv => {
         const name = (nv.ho_ten || '').toLowerCase();
         return !name.includes('ngọc') && !name.includes('hiền');
     });
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 text-xs px-4 sm:px-6">
             
-            {/* 1. BẢNG ĐĂNG KÝ NGUYỆN VỌNG (ĐÃ ẨN NGỌC VÀ HIỀN) */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 bg-gray-50 border-b flex justify-between items-center flex-wrap gap-2">
-                    <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase">1. Đăng Ký Lịch Làm Việc Tuần Này</h2>
-                    <span className="text-[11px] text-gray-500 font-medium italic">
+            {/* 1. BẢNG ĐĂNG KÝ NGUYỆN VỌNG */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+                <div className="p-3 bg-gray-50 border-b flex justify-between items-center flex-wrap gap-2">
+                    <h2 className="text-xs font-extrabold text-[#0B1E3F] uppercase">1. Đăng Ký Lịch Làm Việc Tuần Này</h2>
+                    <span className="text-[10px] text-gray-500 font-medium italic">
                         * Nhấp vào ô trống để đăng ký mới, nhấp vào ô đã có lịch để sửa hoặc hủy
                     </span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-center border-collapse min-w-[750px]">
-                        <thead className="bg-[#0B1E3F] text-white uppercase">
+                    <table className="w-full text-center border-collapse min-w-[700px]">
+                        <thead className="bg-[#0B1E3F] text-white uppercase text-[11px]">
                             <tr>
-                                <th className="p-2.5 sm:p-3 border-r border-[#1D3557] text-left sticky left-0 bg-[#0B1E3F] z-10 w-32 sm:w-48 align-middle">HỌ VÀ TÊN</th>
+                                <th className="p-2 border-r border-[#1D3557] text-left sticky left-0 bg-[#0B1E3F] z-10 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
                                 {weekDates.map((date, index) => {
                                     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
                                     return (
-                                        <th key={index} className={`p-2 border-[#1D3557] w-20 sm:w-24 align-middle ${index < 6 ? 'border-r' : ''}`}>
-                                            <div className="font-bold text-xs sm:text-sm">{dayNames[date.getDay()]}</div>
-                                            <div className="text-[9px] sm:text-[10px] text-[#FFD166] mt-0.5">{date.getDate()}/{date.getMonth() + 1}</div>
+                                        <th key={index} className={`p-1.5 border-[#1D3557] w-20 sm:w-24 align-middle ${index < 6 ? 'border-r' : ''}`}>
+                                            <div className="font-bold">{dayNames[date.getDay()]}</div>
+                                            <div className="text-[9px] text-[#FFD166] mt-0.5">{date.getDate()}/{date.getMonth() + 1}</div>
                                         </th>
                                     );
                                 })}
@@ -568,8 +587,8 @@ export default function ScheduleTab({ week }) {
                                 const regObj = dangKyCa[nv.id] || { raw: {}, data: {} };
 
                                 return (
-                                    <tr key={nv.id} className="group hover:bg-slate-200/90 transition-colors">
-                                        <td className="p-2.5 sm:p-3 font-bold text-[#0B1E3F] border-r border-gray-200 text-left sticky left-0 bg-white group-hover:bg-slate-200 z-10 shadow-[1px_0_0_0_#e5e7eb] truncate max-w-[120px] sm:max-w-none text-xs">
+                                    <tr key={nv.id} className="group hover:bg-slate-100 transition-colors">
+                                        <td className="p-2 font-bold text-[#0B1E3F] border-r border-gray-200 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-10 truncate max-w-[120px] text-[11px]">
                                             {nv.ho_ten}
                                         </td>
                                         
@@ -582,17 +601,17 @@ export default function ScheduleTab({ week }) {
                                             return (
                                                 <td 
                                                     key={index} 
-                                                    onClick={() => handleCellClickRegistration(nv, formatDateKey(date), existingReg)}
-                                                    className={`p-1.5 sm:p-2 align-middle min-h-[60px] cursor-pointer group-hover:bg-slate-200/70 transition-colors ${index < 6 ? 'border-r border-gray-200' : ''}`}
+                                                    onClick={() => handleCellClickRegistration(nv, formatDateKeyVN(date), existingReg)}
+                                                    className={`p-1 align-middle min-h-[45px] cursor-pointer group-hover:bg-slate-100/60 transition-colors ${index < 6 ? 'border-r border-gray-200' : ''}`}
                                                     title="Nhấp để đăng ký / chỉnh sửa"
                                                 >
-                                                    <div className="flex flex-col gap-1 items-center justify-center">
+                                                    <div className="flex flex-col gap-0.5 items-center justify-center">
                                                         {textVal ? (
-                                                            <div className="font-bold text-[11px] sm:text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-1 mx-auto max-w-fit shadow-xs">
+                                                            <div className="font-bold text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 mx-auto max-w-fit shadow-2xs">
                                                                 {textVal}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-gray-300 text-[11px]">-</span>
+                                                            <span className="text-gray-300 text-[10px]">-</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -606,25 +625,25 @@ export default function ScheduleTab({ week }) {
                 </div>
             </div>
 
-            {/* 2. BẢNG LỊCH THỰC TẾ (HIỂN THỊ ĐẦY ĐỦ GIỜ VÀ PHÚT) */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 bg-[#FFF8E7] border-b flex justify-between items-center flex-wrap gap-2">
-                    <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase">2. Bảng Lịch Làm Việc Thực Tế</h2>
-                    <span className="text-[11px] text-gray-500 font-medium italic">
+            {/* 2. BẢNG LỊCH THỰC TẾ */}
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+                <div className="p-3 bg-[#FFF8E7] border-b flex justify-between items-center flex-wrap gap-2">
+                    <h2 className="text-xs font-extrabold text-[#0B1E3F] uppercase">2. Bảng Lịch Làm Việc Thực Tế</h2>
+                    <span className="text-[10px] text-gray-500 font-medium italic">
                         {isManager ? "* Quản lý nhấp vào ô trống để thêm ca, nhấp vào ca để sửa/xóa" : "* Chỉ Quản lý mới có quyền thao tác lịch làm việc thực tế"}
                     </span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-center border-collapse min-w-[750px]">
-                        <thead className="bg-[#0B1E3F] text-white uppercase">
+                    <table className="w-full text-center border-collapse min-w-[700px]">
+                        <thead className="bg-[#0B1E3F] text-white uppercase text-[11px]">
                             <tr>
-                                <th className="p-2.5 sm:p-3 border-r border-[#1D3557] text-left sticky left-0 bg-[#0B1E3F] z-10 w-32 sm:w-48 align-middle">HỌ VÀ TÊN</th>
+                                <th className="p-2 border-r border-[#1D3557] text-left sticky left-0 bg-[#0B1E3F] z-10 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
                                 {weekDates.map((date, index) => {
                                     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
                                     return (
-                                        <th key={index} className={`p-2 border-[#1D3557] w-20 sm:w-24 align-middle ${index < 6 ? 'border-r' : ''}`}>
-                                            <div className="font-bold text-xs sm:text-sm">{dayNames[date.getDay()]}</div>
-                                            <div className="text-[9px] sm:text-[10px] text-[#FFD166] mt-0.5">{date.getDate()}/{date.getMonth() + 1}</div>
+                                        <th key={index} className={`p-1.5 border-[#1D3557] w-20 sm:w-24 align-middle ${index < 6 ? 'border-r' : ''}`}>
+                                            <div className="font-bold">{dayNames[date.getDay()]}</div>
+                                            <div className="text-[9px] text-[#FFD166] mt-0.5">{date.getDate()}/{date.getMonth() + 1}</div>
                                         </th>
                                     );
                                 })}
@@ -632,31 +651,27 @@ export default function ScheduleTab({ week }) {
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                             {nhanVienList.map((nv) => (
-                                <tr key={nv.id} className="group hover:bg-slate-200/90 transition-colors">
-                                    <td className="p-2.5 sm:p-3 font-bold text-[#0B1E3F] border-r border-gray-200 text-left sticky left-0 bg-white group-hover:bg-slate-200/90 z-10 shadow-[1px_0_0_0_#e5e7eb] truncate max-w-[120px] sm:max-w-none text-xs">
-                                        {nv.ho_ten} {nv.vai_tro === 'QUAN_LY' && <span className="text-[9px] bg-amber-100 text-amber-700 px-1 py-0.2 rounded ml-1 font-semibold">QL</span>}
+                                <tr key={nv.id} className="group hover:bg-slate-100 transition-colors">
+                                    <td className="p-2 font-bold text-[#0B1E3F] border-r border-gray-200 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-10 truncate max-w-[120px] text-[11px]">
+                                        {nv.ho_ten} {nv.vai_tro === 'QUAN_LY' && <span className="text-[8px] bg-amber-100 text-amber-700 px-1 py-0.2 rounded ml-0.5 font-semibold">QL</span>}
                                     </td>
                                     
                                     {weekDates.map((date, index) => {
-                                        const dKey = formatDateKey(date);
+                                        const dKey = formatDateKeyVN(date);
                                         const shiftsOnThisDay = shiftsByUserIdAndDate[nv.id]?.[dKey] || [];
                                         
                                         return (
                                             <td 
                                                 key={index} 
                                                 onClick={() => isManager && handleOpenAdd(nv, dKey)}
-                                                className={`p-1.5 sm:p-2 align-middle min-h-[60px] ${isManager ? 'cursor-pointer group-hover:bg-slate-200/60' : 'cursor-default'} transition-colors ${index < 6 ? 'border-r border-gray-200' : ''}`}
+                                                className={`p-1 align-middle min-h-[45px] ${isManager ? 'cursor-pointer group-hover:bg-slate-100/60' : 'cursor-default'} transition-colors ${index < 6 ? 'border-r border-gray-200' : ''}`}
                                             >
-                                                <div className="flex flex-col gap-1 items-center justify-center">
+                                                <div className="flex flex-col gap-0.5 items-center justify-center">
                                                     {shiftsOnThisDay.length > 0 ? (
                                                         <>
                                                             {shiftsOnThisDay.map((s, si) => {
-                                                                const dStart = new Date(s.thoi_gian_bat_dau);
-                                                                const dEnd = new Date(s.thoi_gian_ket_thuc);
-                                                                const sH = dStart.getHours();
-                                                                const sM = dStart.getMinutes();
-                                                                const eH = dEnd.getHours();
-                                                                const eM = dEnd.getMinutes();
+                                                                const { hour: sH, minute: sM } = getVietnamTime(s.thoi_gian_bat_dau);
+                                                                const { hour: eH, minute: eM } = getVietnamTime(s.thoi_gian_ket_thuc);
 
                                                                 const sStr = sM > 0 ? `${sH}h${String(sM).padStart(2, '0')}` : `${sH}h`;
                                                                 const eStr = eM > 0 ? `${eH}h${String(eM).padStart(2, '0')}` : `${eH}h`;
@@ -665,10 +680,10 @@ export default function ScheduleTab({ week }) {
                                                                     <div 
                                                                         key={si} 
                                                                         onClick={(e) => isManager ? handleOpenEdit(e, nv, dKey, s) : e.stopPropagation()}
-                                                                        className={`font-bold text-[11px] sm:text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-1 mx-auto max-w-fit shadow-xs ${isManager ? 'hover:bg-blue-100 hover:border-blue-400 cursor-pointer' : ''} transition`}
+                                                                        className={`font-bold text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5 mx-auto max-w-fit shadow-2xs ${isManager ? 'hover:bg-blue-100 hover:border-blue-400 cursor-pointer' : ''} transition`}
                                                                     >
                                                                         {sStr}-{eStr} 
-                                                                        {s.id_chi_nhanh !== 1 && <span className="text-orange-600 ml-0.5">({s.ten_chi_nhanh})</span>}
+                                                                        {s.id_chi_nhanh !== 1 && <span className="text-orange-600 text-[9px] ml-0.5">({s.ten_chi_nhanh})</span>}
                                                                     </div>
                                                                 );
                                                             })}
@@ -678,15 +693,15 @@ export default function ScheduleTab({ week }) {
                                                                         e.stopPropagation();
                                                                         handleOpenAdd(nv, dKey);
                                                                     }}
-                                                                    className="mt-1 bg-emerald-100 hover:bg-[#0B1E3F] hover:text-emerald-400 text-emerald-700 border border-emerald-200 hover:border-[#0B1E3F] rounded px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-xs flex items-center gap-0.5"
+                                                                    className="mt-0.5 bg-emerald-100 hover:bg-[#0B1E3F] hover:text-emerald-400 text-emerald-700 border border-emerald-200 hover:border-[#0B1E3F] rounded px-1 py-0.2 text-[9px] font-bold transition-all shadow-2xs flex items-center gap-0.5"
                                                                     title="Thêm ca tiếp theo"
                                                                 >
-                                                                    <Plus size={10}/> Thêm ca
+                                                                    <Plus size={9}/> Thêm ca
                                                                 </button>
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="text-gray-300 text-[11px]">-</span>
+                                                        <span className="text-gray-300 text-[10px]">-</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -702,30 +717,30 @@ export default function ScheduleTab({ week }) {
             {/* MODAL THÊM / SỬA ĐĂNG KÝ NGUYỆN VỌNG */}
             {isRegModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up my-auto">
-                        <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
-                            <h3 className="font-bold uppercase tracking-wider text-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
+                        <div className="p-3 bg-[#0B1E3F] text-white flex justify-between items-center">
+                            <h3 className="font-bold uppercase tracking-wider text-xs">
                                 {regModalMode === 'add' ? 'Đăng Ký Nguyện Vọng' : 'Chỉnh Sửa Đăng Ký'}
                             </h3>
-                            <button onClick={() => setIsRegModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={20}/></button>
+                            <button onClick={() => setIsRegModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={16}/></button>
                         </div>
                         
-                        <form onSubmit={handleSaveRegistration} className="p-5 space-y-4">
-                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <form onSubmit={handleSaveRegistration} className="p-4 space-y-3">
+                            <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200 flex justify-between items-center">
                                 <div>
-                                    <p className="text-sm font-bold text-[#0B1E3F] mb-1">{formData.ho_ten}</p>
-                                    <p className="text-xs font-semibold text-gray-500 flex items-center gap-1"><Clock size={12}/> Ngày: {formData.ngay_lam.split('-').reverse().join('/')}</p>
+                                    <p className="text-xs font-bold text-[#0B1E3F] mb-0.5">{formData.ho_ten}</p>
+                                    <p className="text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Clock size={11}/> Ngày: {formData.ngay_lam.split('-').reverse().join('/')}</p>
                                 </div>
                                 <button 
                                     type="button"
                                     onClick={handleSelectFullDayRegistration}
-                                    className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-2.5 py-1.5 rounded-xl text-xs font-extrabold transition shadow-xs"
+                                    className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-1 rounded-lg text-[10px] font-extrabold transition shadow-2xs"
                                 >
                                     Cả ngày (Full)
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 <WheelTimePicker 
                                     label="Bắt Đầu"
                                     hour={formData.gio_bat_dau_h}
@@ -744,20 +759,20 @@ export default function ScheduleTab({ week }) {
                                 />
                             </div>
 
-                            <div className="pt-4 border-t mt-4 flex items-center justify-between gap-3">
+                            <div className="pt-3 border-t mt-3 flex items-center justify-between gap-2">
                                 {regModalMode === 'edit' ? (
                                     <button 
                                         type="button" 
                                         onClick={handleDeleteRegistration} 
-                                        className="px-4 py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1.5 transition shadow-md flex-1"
+                                        className="px-3 py-2.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1 transition shadow-md flex-1"
                                     >
-                                        <Trash2 size={18}/> Hủy Đăng Ký
+                                        <Trash2 size={15}/> Hủy Đăng Ký
                                     </button>
                                 ) : (
                                     <button 
                                         type="button" 
                                         onClick={() => setIsRegModalOpen(false)} 
-                                        className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition shadow-sm flex-1 text-center"
+                                        className="px-3 py-2.5 text-xs font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition shadow-2xs flex-1 text-center"
                                     >
                                         Hủy Bỏ
                                     </button>
@@ -765,9 +780,9 @@ export default function ScheduleTab({ week }) {
                                 
                                 <button 
                                     type="submit" 
-                                    className="px-4 py-3 text-sm font-bold text-white rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition flex-1 bg-emerald-600 hover:bg-emerald-700"
+                                    className="px-3 py-2.5 text-xs font-bold text-white rounded-xl shadow-md flex items-center justify-center gap-1 transition flex-1 bg-emerald-600 hover:bg-emerald-700"
                                 >
-                                    <Check size={18}/> Xác Nhận
+                                    <Check size={15}/> Xác Nhận
                                 </button>
                             </div>
                         </form>
@@ -775,24 +790,24 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ (MỤC 2) */}
+            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up my-auto">
-                        <div className={`p-4 flex justify-between items-center text-white ${modalMode === 'add' ? 'bg-[#0B1E3F]' : 'bg-amber-600'}`}>
-                            <h3 className="font-bold uppercase tracking-wider text-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
+                        <div className={`p-3 flex justify-between items-center text-white ${modalMode === 'add' ? 'bg-[#0B1E3F]' : 'bg-amber-600'}`}>
+                            <h3 className="font-bold uppercase tracking-wider text-xs">
                                 {modalMode === 'add' ? 'Thêm Ca Làm Mới' : 'Chỉnh Sửa Ca Làm'}
                             </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={20}/></button>
+                            <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={16}/></button>
                         </div>
                         
-                        <form onSubmit={handleSaveShift} className="p-5 space-y-4">
-                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                <p className="text-sm font-bold text-[#0B1E3F] mb-1">{formData.ho_ten}</p>
-                                <p className="text-xs font-semibold text-gray-500 flex items-center gap-1"><Clock size={12}/> Ngày làm: {formData.ngay_lam.split('-').reverse().join('/')}</p>
+                        <form onSubmit={handleSaveShift} className="p-4 space-y-3">
+                            <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                                <p className="text-xs font-bold text-[#0B1E3F] mb-0.5">{formData.ho_ten}</p>
+                                <p className="text-[11px] font-semibold text-gray-500 flex items-center gap-1"><Clock size={11}/> Ngày làm: {formData.ngay_lam.split('-').reverse().join('/')}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 <WheelTimePicker 
                                     label="Bắt Đầu"
                                     hour={formData.gio_bat_dau_h}
@@ -812,12 +827,12 @@ export default function ScheduleTab({ week }) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Chi Nhánh</label>
-                                <div className="flex gap-2">
+                                <label className="block text-[10px] font-bold text-gray-700 mb-1 uppercase">Chi Nhánh</label>
+                                <div className="flex gap-1.5">
                                     <select 
                                         value={formData.id_chi_nhanh} 
                                         onChange={e => setFormData({...formData, id_chi_nhanh: e.target.value})}
-                                        className="flex-1 p-3 border border-gray-300 rounded-xl bg-gray-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="flex-1 p-2 border border-gray-300 rounded-xl bg-gray-50 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
                                     >
                                         {chiNhanhList.map(cn => (
                                             <option key={cn.id} value={cn.id}>{cn.ten_chi_nhanh}</option>
@@ -826,28 +841,28 @@ export default function ScheduleTab({ week }) {
                                     <button 
                                         type="button"
                                         onClick={() => setIsBranchModalOpen(true)}
-                                        className="bg-[#0B1E3F] text-[#FFD166] px-3.5 rounded-xl hover:bg-[#1D3557] transition shadow-xs flex items-center justify-center"
+                                        className="bg-[#0B1E3F] text-[#FFD166] px-3 rounded-xl hover:bg-[#1D3557] transition shadow-2xs flex items-center justify-center"
                                         title="Quản lý chi nhánh"
                                     >
-                                        <Settings size={18}/>
+                                        <Settings size={16}/>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t mt-4 flex items-center justify-between gap-3">
+                            <div className="pt-3 border-t mt-3 flex items-center justify-between gap-2">
                                 {modalMode === 'edit' ? (
                                     <button 
                                         type="button" 
                                         onClick={handleDeleteShift} 
-                                        className="px-4 py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1.5 transition shadow-md flex-1"
+                                        className="px-3 py-2.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1 transition shadow-md flex-1"
                                     >
-                                        <Trash2 size={18}/> Xóa Ca
+                                        <Trash2 size={15}/> Xóa Ca
                                     </button>
                                 ) : (
                                     <button 
                                         type="button" 
                                         onClick={() => setIsModalOpen(false)} 
-                                        className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition shadow-sm flex-1 text-center"
+                                        className="px-3 py-2.5 text-xs font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition shadow-2xs flex-1 text-center"
                                     >
                                         Hủy Bỏ
                                     </button>
@@ -855,11 +870,11 @@ export default function ScheduleTab({ week }) {
                                 
                                 <button 
                                     type="submit" 
-                                    className={`px-4 py-3 text-sm font-bold text-white rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition flex-1 ${
+                                    className={`px-3 py-2.5 text-xs font-bold text-white rounded-xl shadow-md flex items-center justify-center gap-1 transition flex-1 ${
                                         modalMode === 'add' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600 text-[#0B1E3F]'
                                     }`}
                                 >
-                                    {modalMode === 'add' ? <><Check size={18}/> Lưu Lịch</> : <><Edit size={18}/> Cập Nhật</>}
+                                    {modalMode === 'add' ? <><Check size={15}/> Lưu Lịch</> : <><Edit size={15}/> Cập Nhật</>}
                                 </button>
                             </div>
                         </form>
@@ -870,52 +885,52 @@ export default function ScheduleTab({ week }) {
             {/* MODAL QUẢN LÝ CHI NHÁNH */}
             {isBranchModalOpen && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
-                        <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
-                            <h3 className="font-bold uppercase tracking-wider text-sm flex items-center gap-2">
-                                <Settings size={18} className="text-[#FFD166]"/> Quản Lý Chi Nhánh
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up my-auto">
+                        <div className="p-3 bg-[#0B1E3F] text-white flex justify-between items-center">
+                            <h3 className="font-bold uppercase tracking-wider text-xs flex items-center gap-1.5">
+                                <Settings size={16} className="text-[#FFD166]"/> Quản Lý Chi Nhánh
                             </h3>
-                            <button onClick={() => setIsBranchModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={20}/></button>
+                            <button onClick={() => setIsBranchModalOpen(false)} className="hover:bg-white/20 p-1 rounded-md"><X size={16}/></button>
                         </div>
                         
-                        <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
-                            <form onSubmit={handleSaveBranch} className="space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                                <h4 className="text-xs font-extrabold text-[#0B1E3F] uppercase">
+                        <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <form onSubmit={handleSaveBranch} className="space-y-2.5 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                <h4 className="text-[11px] font-extrabold text-[#0B1E3F] uppercase">
                                     {isEditingBranch ? 'Sửa thông tin chi nhánh' : 'Thêm chi nhánh mới'}
                                 </h4>
 
                                 <div>
-                                    <label className="block text-[11px] font-bold text-gray-700 mb-1 uppercase">Tên chi nhánh</label>
+                                    <label className="block text-[10px] font-bold text-gray-700 mb-0.5 uppercase">Tên chi nhánh</label>
                                     <input 
                                         type="text" required
                                         value={branchForm.ten_chi_nhanh}
                                         onChange={e => setBranchForm({...branchForm, ten_chi_nhanh: e.target.value})}
-                                        className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full p-2 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-700 mb-1 uppercase">Lương cơ bản / giờ</label>
+                                        <label className="block text-[9px] font-bold text-gray-700 mb-0.5 uppercase">Lương cơ bản / giờ</label>
                                         <input 
                                             type="number" step="1000" required
                                             value={branchForm.luong_co_ban_mot_gio}
                                             onChange={e => setBranchForm({...branchForm, luong_co_ban_mot_gio: e.target.value})}
-                                            className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none"
+                                            className="w-full p-2 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-700 mb-1 uppercase">Phụ cấp theo giờ</label>
+                                        <label className="block text-[9px] font-bold text-gray-700 mb-0.5 uppercase">Phụ cấp theo giờ</label>
                                         <input 
                                             type="number" step="500"
                                             value={branchForm.phu_cap_theo_gio}
                                             onChange={e => setBranchForm({...branchForm, phu_cap_theo_gio: e.target.value})}
-                                            className="w-full p-2.5 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none"
+                                            className="w-full p-2 border border-gray-300 rounded-xl text-xs font-bold bg-white outline-none"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2 pt-2">
+                                <div className="flex gap-1.5 pt-1">
                                     {isEditingBranch && (
                                         <button 
                                             type="button" 
@@ -923,46 +938,46 @@ export default function ScheduleTab({ week }) {
                                                 setIsEditingBranch(false);
                                                 setBranchForm({ id: '', ten_chi_nhanh: '', luong_co_ban_mot_gio: 25000, phu_cap_theo_gio: 0, phu_cap_co_dinh: 0, khau_tru_theo_gio: 0, ly_do_khau_tru: '' });
                                             }}
-                                            className="px-4 py-3 text-xs font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition"
+                                            className="px-3 py-2 text-[11px] font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition"
                                         >
                                             Hủy
                                         </button>
                                     )}
                                     <button 
                                         type="submit" 
-                                        className={`flex-1 py-3 px-4 text-xs font-bold rounded-xl shadow-md transition text-white ${
+                                        className={`flex-1 py-2 px-3 text-[11px] font-bold rounded-xl shadow-xs transition text-white ${
                                             isEditingBranch ? 'bg-amber-500 hover:bg-amber-600 text-[#0B1E3F]' : 'bg-emerald-600 hover:bg-emerald-700'
                                         }`}
                                     >
-                                        {isEditingBranch ? 'Cập nhật chi nhánh' : 'Thêm chi nhánh'}
+                                        {isEditingBranch ? 'Cập nhật' : 'Thêm chi nhánh'}
                                     </button>
                                 </div>
                             </form>
 
-                            <div className="space-y-3">
-                                <h4 className="text-xs font-extrabold text-[#0B1E3F] uppercase">Danh sách chi nhánh hiện tại</h4>
-                                <div className="space-y-2.5">
+                            <div className="space-y-2">
+                                <h4 className="text-[11px] font-extrabold text-[#0B1E3F] uppercase">Danh sách chi nhánh</h4>
+                                <div className="space-y-2">
                                     {chiNhanhList.map(cn => (
-                                        <div key={cn.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-2xl shadow-xs">
+                                        <div key={cn.id} className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl shadow-2xs">
                                             <div>
                                                 <span className="text-xs font-bold text-gray-900 block">{cn.ten_chi_nhanh}</span>
                                                 <span className="text-[10px] text-gray-500">Lương: {Number(cn.luong_co_ban_mot_gio).toLocaleString()}đ/h</span>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
                                                 <button 
                                                     type="button"
                                                     onClick={() => {
                                                         setIsEditingBranch(true);
                                                         setBranchForm(cn);
                                                     }}
-                                                    className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl text-xs font-bold transition shadow-xs"
+                                                    className="px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-[10px] font-bold transition shadow-2xs"
                                                 >
                                                     Sửa
                                                 </button>
                                                 <button 
                                                     type="button"
                                                     onClick={() => handleDeleteBranch(cn.id)}
-                                                    className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-xs font-bold transition shadow-xs"
+                                                    className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-[10px] font-bold transition shadow-2xs"
                                                 >
                                                     Xóa
                                                 </button>
