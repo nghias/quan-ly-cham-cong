@@ -9,12 +9,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Kích hoạt toàn bộ Routes
-app.use('/api', routes);
-
 app.get('/ping', (req, res) => {
     res.status(200).send('Server is alive!');
 });
+
+// Kích hoạt toàn bộ Routes
+app.use('/api', routes);
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
