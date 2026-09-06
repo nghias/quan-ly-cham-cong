@@ -6,23 +6,47 @@ import Login from './pages/Login';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 
-function PrivateRoute({ children, role }) {
+// Hàm kiểm tra quyền quản lý an toàn (không phân biệt hoa thường, dấu tiếng Việt hay khoảng trắng)
+function checkIsManager(vaiTro) {
+    const r = (vaiTro || '').trim().toUpperCase();
+    return r === 'QUAN_LY' || r === 'QUẢN LÝ' || r === 'ADMIN' || r === 'MANAGER';
+}
+
+function PrivateRoute({ children, requiredType }) {
     const { user, loading } = useContext(AuthContext);
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải...</div>;
-    if (!user) return <Navigate to="/login" replace />;
-    if (role && user.vai_tro !== role) return <Navigate to="/login" replace />;
+    
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white font-bold">Đang tải hệ thống...</div>;
+    }
+    
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    const isManager = checkIsManager(user.vai_tro);
+
+    if (requiredType === 'manager' && !isManager) {
+        return <Navigate to="/employee" replace />;
+    }
+    if (requiredType === 'employee' && isManager) {
+        return <Navigate to="/manager" replace />;
+    }
+
     return children;
 }
 
-// Kiểm tra nếu đã đăng nhập thì tự động chuyển đến Dashboard tương ứng
 function RootRedirect() {
     const { user, loading } = useContext(AuthContext);
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải hệ thống...</div>;
     
-    if (!user) return <Navigate to="/login" replace />;
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white font-bold">Đang tải hệ thống...</div>;
+    }
     
-    const role = (user.vai_tro || '').trim().toUpperCase();
-    if (role === 'QUAN_LY' || role === 'QUẢN LÝ' || role === 'ADMIN' || role === 'MANAGER') {
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+    
+    if (checkIsManager(user.vai_tro)) {
         return <Navigate to="/manager" replace />;
     }
     return <Navigate to="/employee" replace />;
@@ -32,7 +56,7 @@ function AppRoutes() {
     const { loading } = useContext(AuthContext);
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải hệ thống...</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white font-bold">Đang tải hệ thống...</div>;
     }
 
     return (
@@ -40,8 +64,8 @@ function AppRoutes() {
             <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/employee" element={<PrivateRoute role="NHAN_VIEN"><EmployeeDashboard /></PrivateRoute>} />
-                <Route path="/manager" element={<PrivateRoute role="QUAN_LY"><ManagerDashboard /></PrivateRoute>} />
+                <Route path="/employee" element={<PrivateRoute requiredType="employee"><EmployeeDashboard /></PrivateRoute>} />
+                <Route path="/manager" element={<PrivateRoute requiredType="manager"><ManagerDashboard /></PrivateRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
