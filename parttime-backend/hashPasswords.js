@@ -1,26 +1,46 @@
-const db = require('./config/db');
+const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config(); // Đọc cấu hình từ file .env
 
-async function encryptExistingPasswords() {
+async function updatePasswords() {
     try {
-        console.log("⏳ Đang quét danh sách tài khoản...");
-        const [users] = await db.query('SELECT id, mat_khau FROM nguoi_dung');
-
-        for (let user of users) {
-            // Chỉ mã hóa nếu mật khẩu chưa có định dạng của bcrypt (bắt đầu bằng $)
-            if (!user.mat_khau.startsWith('$')) {
-                const hashedPassword = await bcrypt.hash(user.mat_khau, 10);
-                await db.query('UPDATE nguoi_dung SET mat_khau = ? WHERE id = ?', [hashedPassword, user.id]);
-                console.log(`✅ Đã mã hóa mật khẩu cho User ID: ${user.id}`);
-            }
-        }
+        console.log("Đang kết nối tới TiDB Cloud...");
         
-        console.log("🎉 Hoàn tất mã hóa toàn bộ mật khẩu trong Database!");
+        // Thiết lập kết nối trực tiếp sử dụng biến môi trường và file chứng chỉ SSL
+        const connection = await mysql.createConnection({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            port: Number(process.env.DB_PORT) || 4000,
+            ssl: {
+                minVersion: 'TLSv1.2',
+                ca: fs.readFileSync(path.join(__dirname, 'isrgrootx1.pem')) // Đường dẫn tới file chứng chỉ bảo mật
+            }
+        });
+
+        console.log("✅ Kết nối TiDB Cloud thành công!");
+
+        // Tạo mã băm bcrypt cho mật khẩu '12345678'
+        const plainPassword = '12345678';
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+        // Thực hiện câu lệnh SQL cập nhật mật khẩu cho toàn bộ bảng users
+        const [result] = await connection.execute(
+            'UPDATE nguoi_dung SET mat_khau = ?', 
+            [hashedPassword]
+        );
+
+        console.log(`🚀 Đã cập nhật thành công mật khẩu thành '12345678' cho tất cả tài khoản! Số bản ghi được cập nhật: ${result.affectedRows}`);
+        
+        await connection.end();
         process.exit(0);
-    } catch (error) {
-        console.error("❌ Có lỗi xảy ra:", error);
+    } catch (err) {
+        console.error("❌ Lỗi khi cập nhật mật khẩu:", err);
         process.exit(1);
     }
 }
 
-encryptExistingPasswords();
+updatePasswords();
