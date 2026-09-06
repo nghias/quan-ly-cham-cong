@@ -53,4 +53,5 @@ router.delete('/shifts/delete/:id', verifyToken, isManager, shiftController.xoaL
 router.get('/budget/q8', verifyToken, isManager, budgetController.kiemTraNganSach);
 router.post('/budget/q8', verifyToken, isManager, budgetController.capNhatNganSach);
 
+
 module.exports = router;

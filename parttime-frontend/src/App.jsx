@@ -8,13 +8,26 @@ import ManagerDashboard from './pages/ManagerDashboard';
 
 function PrivateRoute({ children, role }) {
     const { user, loading } = useContext(AuthContext);
-    if (loading) return <div>Đang tải...</div>;
-    if (!user) return <Navigate to="/login" />;
-    if (role && user.vai_tro !== role) return <Navigate to="/login" />;
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải...</div>;
+    if (!user) return <Navigate to="/login" replace />;
+    if (role && user.vai_tro !== role) return <Navigate to="/login" replace />;
     return children;
 }
 
-// Tạo component con nằm BÊN TRONG AuthProvider để gọi useContext an toàn
+// Kiểm tra nếu đã đăng nhập thì tự động chuyển đến Dashboard tương ứng
+function RootRedirect() {
+    const { user, loading } = useContext(AuthContext);
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải hệ thống...</div>;
+    
+    if (!user) return <Navigate to="/login" replace />;
+    
+    const role = (user.vai_tro || '').trim().toUpperCase();
+    if (role === 'QUAN_LY' || role === 'QUẢN LÝ' || role === 'ADMIN' || role === 'MANAGER') {
+        return <Navigate to="/manager" replace />;
+    }
+    return <Navigate to="/employee" replace />;
+}
+
 function AppRoutes() {
     const { loading } = useContext(AuthContext);
 
@@ -25,10 +38,11 @@ function AppRoutes() {
     return (
         <Router>
             <Routes>
+                <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/employee" element={<PrivateRoute role="NHAN_VIEN"><EmployeeDashboard /></PrivateRoute>} />
                 <Route path="/manager" element={<PrivateRoute role="QUAN_LY"><ManagerDashboard /></PrivateRoute>} />
-                <Route path="*" element={<Navigate to="/login" />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
     );
