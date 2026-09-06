@@ -1,23 +1,17 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Gamepad2, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
+
+
 export default function Login() {
     const [maNhanVien, setMaNhanVien] = useState('');
     const [matKhau, setMatKhau] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
+    const [rememberMe, setRememberMe] = useState(true); // Mặc định bật ghi nhớ
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const { user, login } = useContext(AuthContext);
+    const { login } = useContext(AuthContext);
     const navigate = useNavigate();
-
-    // THÊM ĐOẠN NÀY: Nếu đã đăng nhập rồi thì tự động đẩy vào dashboard, không hiện form login nữa
-    useEffect(() => {
-        if (user) {
-            const role = (user.vai_tro || '').trim().toUpperCase();
-            if (role === 'QUAN_LY' || role === 'QUẢN LÝ' || role === 'ADMIN' || role === 'MANAGER') {
-                navigate('/manager', { replace: true });
-            } else {
-                navigate('/employee', { replace: true });
-            }
-        }
-    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
