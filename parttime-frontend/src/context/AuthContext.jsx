@@ -27,7 +27,9 @@ export const AuthProvider = ({ children }) => {
             setUser({ token, vai_tro, ho_ten });
             return { success: true };
         } catch (error) {
-            return { success: false, message: error.response?.data?.message || 'Đăng nhập thất bại' };
+            // Bắt cả message hoặc error từ backend trả về
+            const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Đăng nhập thất bại';
+            return { success: false, message: errorMsg };
         }
     };
 
