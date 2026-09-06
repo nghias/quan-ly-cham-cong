@@ -19,9 +19,9 @@ exports.login = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, ma_nhan_vien: user.ma_nhan_vien, vai_tro: user.vai_tro }, 
+            { id: user.id, vai_tro: user.vai_tro }, 
             process.env.JWT_SECRET, 
-            { expiresIn: '7d' }
+            { expiresIn: '60d' } // <--- Đổi thành 60 ngày
         );
 
         res.json({ message: "Đăng nhập thành công", token, vai_tro: user.vai_tro, ho_ten: user.ho_ten });

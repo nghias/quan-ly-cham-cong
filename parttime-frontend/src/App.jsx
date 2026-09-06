@@ -15,6 +15,12 @@ function PrivateRoute({ children, role }) {
 }
 
 export default function App() {
+    const { loading } = useContext(AuthContext);
+
+    // BẮT BUỘC PHẢI CÓ ĐOẠN NÀY ĐỂ CHỜ ĐỌC LOCALSTORAGE
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải hệ thống...</div>;
+    }
     return (
         <AuthProvider>
             <Router>
