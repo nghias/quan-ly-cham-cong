@@ -14,23 +14,30 @@ function PrivateRoute({ children, role }) {
     return children;
 }
 
-export default function App() {
+// Tạo component con nằm BÊN TRONG AuthProvider để gọi useContext an toàn
+function AppRoutes() {
     const { loading } = useContext(AuthContext);
 
-    // BẮT BUỘC PHẢI CÓ ĐOẠN NÀY ĐỂ CHỜ ĐỌC LOCALSTORAGE
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center bg-[#070F1E] text-white">Đang tải hệ thống...</div>;
     }
+
+    return (
+        <Router>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/employee" element={<PrivateRoute role="NHAN_VIEN"><EmployeeDashboard /></PrivateRoute>} />
+                <Route path="/manager" element={<PrivateRoute role="QUAN_LY"><ManagerDashboard /></PrivateRoute>} />
+                <Route path="*" element={<Navigate to="/login" />} />
+            </Routes>
+        </Router>
+    );
+}
+
+export default function App() {
     return (
         <AuthProvider>
-            <Router>
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/employee" element={<PrivateRoute role="NHAN_VIEN"><EmployeeDashboard /></PrivateRoute>} />
-                    <Route path="/manager" element={<PrivateRoute role="QUAN_LY"><ManagerDashboard /></PrivateRoute>} />
-                    <Route path="*" element={<Navigate to="/login" />} />
-                </Routes>
-            </Router>
+            <AppRoutes />
         </AuthProvider>
     );
 }
