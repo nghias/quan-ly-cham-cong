@@ -173,6 +173,33 @@ export default function ScheduleTab({ week }) {
     };
     const weekDates = getWeekDates(week.start);
 
+    // HÀM FETCH DỮ LIỆU ĐÃ ĐƯỢC BỔ SUNG LẠI ĐẦY ĐỦ
+    const fetchRegistrations = async (start, end) => {
+        try {
+            const res = await axiosClient.get('/shifts/registrations', { params: { startDate: start, endDate: end } });
+            const grouped = {};
+            res.data.forEach(curr => {
+                if (!grouped[curr.id_nguoi_dung]) grouped[curr.id_nguoi_dung] = { raw: {}, data: {} };
+                const dayOfWeek = new Date(curr.ngay_dang_ky).getDay();
+                const dayKey = dayOfWeek === 0 ? 'cn' : `t${dayOfWeek + 1}`;
+                const [sH, sM] = curr.gio_bat_dau.split(':').map(Number);
+                const [eH, eM] = curr.gio_ket_thuc.split(':').map(Number);
+                const sStr = sM > 0 ? `${sH}h${String(sM).padStart(2, '0')}` : `${sH}h`;
+                const eStr = eM > 0 ? `${eH}h${String(eM).padStart(2, '0')}` : `${eH}h`;
+                grouped[curr.id_nguoi_dung].raw[dayKey] = curr;
+                grouped[curr.id_nguoi_dung].data[dayKey] = (sH === 8 && eH >= 22) ? 'Full' : `${sStr}-${eStr}`;
+            });
+            setDangKyCa(grouped);
+        } catch (err) {}
+    };
+
+    const fetchShifts = async (start, end) => {
+        try {
+            const res = await axiosClient.get('/shifts', { params: { startDate: `${start} 00:00:00`, endDate: `${end} 23:59:59` } });
+            setLichLam(res.data);
+        } catch (err) {}
+    };
+
     const fetchMonthData = async (startStr) => {
         const weekDatesArr = getWeekDates(startStr);
         const uniqueMonthsMap = new Map();
@@ -496,7 +523,6 @@ export default function ScheduleTab({ week }) {
         catch (err) { alert("Lỗi khi xóa ca làm!"); }
     };
 
-    // HÀM HỖ TRỢ ĐỊNH DẠNG TIỀN TỆ TRONG FORM NHẬP (ÉP KIỂU VỀ CENTER VÀ CHỌN ALL KHI CLICK)
     const formatVND = (val) => {
         if (val === '' || val === null || val === undefined) return '';
         const strVal = String(val).replace(/\D/g, '');
@@ -775,7 +801,7 @@ export default function ScheduleTab({ week }) {
             {/* MODAL THÊM / SỬA ĐĂNG KÝ NGUYỆN VỌNG */}
             {isRegModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up my-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
                         <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
                             <h3 className="font-bold uppercase tracking-wider text-sm">{regModalMode === 'add' ? 'Đăng Ký Nguyện Vọng' : 'Chỉnh Sửa Đăng Ký'}</h3>
                             <button onClick={() => setIsRegModalOpen(false)} className="hover:bg-white/20 p-1.5 rounded-md cursor-pointer"><X size={18}/></button>
@@ -801,7 +827,7 @@ export default function ScheduleTab({ week }) {
             {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up my-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
                         <div className={`p-4 flex justify-between items-center text-white ${modalMode === 'add' ? 'bg-[#0B1E3F]' : 'bg-amber-600'}`}>
                             <h3 className="font-bold uppercase tracking-wider text-sm">{modalMode === 'add' ? 'Thêm Ca Làm Mới' : 'Chỉnh Sửa Ca Làm'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1.5 rounded-md cursor-pointer"><X size={18}/></button>
@@ -839,7 +865,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL QUẢN LÝ CHI NHÁNH */}
+            {/* MODAL QUẢN LÝ CHI NHÁNH VỚI ĐỊNH DẠNG TIỀN VN VÀ CÁC TRƯỜNG PHỤ CẤP, KHẤU TRỪ */}
             {isBranchModalOpen && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
