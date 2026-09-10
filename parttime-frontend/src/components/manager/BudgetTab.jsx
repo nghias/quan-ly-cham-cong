@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
-import { AlertCircle, CheckSquare, Square, Clock, Edit2, Check, X, CalendarDays } from 'lucide-react';
+import { AlertCircle, CheckSquare, Square, Clock, Edit2, Check, X, CalendarDays, ShieldCheck, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Hàm parse chuỗi DATETIME từ MySQL trực tiếp, chống lệch múi giờ UTC trên server
+// Hàm parse chuỗi DATETIME từ MySQL trực tiếp, chống lệch múi giờ
 function parseMySqlDateTime(dateTimeStr) {
     if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
     const cleaned = String(dateTimeStr).replace('T', ' ').replace('Z', '').split('.')[0];
@@ -34,41 +34,63 @@ function parseMySqlDateTime(dateTimeStr) {
     return { year, month, day, hour, minute, dateKey };
 }
 
-export default function BudgetTab({ week }) {
+export default function BudgetTab() {
+    // State quản lý Tháng
+    const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+
     const [budgetData, setBudgetData] = useState(null);
     const [lichLam, setLichLam] = useState([]);
     const [nhanVienList, setNhanVienList] = useState([]); 
     const [selectedEmployees, setSelectedEmployees] = useState({});
     
-    // State lưu tổng lương của cả tháng
-    const [tongLuongThang, setTongLuongThang] = useState({ all: 0, q8: 0 });
-
-    // State chỉnh sửa ngân sách
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [editBudgetValue, setEditBudgetValue] = useState('');
 
+    // Logic điều hướng tháng
+    const handlePrevMonth = () => {
+        setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    };
+
+    const handleNextMonth = () => {
+        const next = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1);
+        setCurrentMonthDate(next);
+    };
+
+    const handleResetMonth = () => {
+        setCurrentMonthDate(new Date());
+    };
+
+    // Kiểm tra xem có được phép tiến lên tháng tiếp theo không (Tối đa +1 tháng)
+    const maxAllowedMonth = new Date();
+    maxAllowedMonth.setMonth(maxAllowedMonth.getMonth() + 1);
+    const isNextDisabled = currentMonthDate.getFullYear() > maxAllowedMonth.getFullYear() || 
+        (currentMonthDate.getFullYear() === maxAllowedMonth.getFullYear() && currentMonthDate.getMonth() >= maxAllowedMonth.getMonth());
+
+    const y = currentMonthDate.getFullYear();
+    const m = currentMonthDate.getMonth() + 1;
+    const lastDay = new Date(y, m, 0).getDate();
+    const startStr = `${y}-${String(m).padStart(2, '0')}-01`;
+    const endStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
     useEffect(() => {
         fetchEmployees();
-        fetchShifts(week.start, week.end);
-        fetchBudget(week.start, week.end);
-        fetchMonthlyShifts(week.start); // Lấy dữ liệu của cả tháng
+        fetchShifts(startStr, endStr);
+        fetchBudget(startStr, endStr);
         setIsEditingBudget(false);
-    }, [week]);
+    }, [currentMonthDate]);
 
-    // Gọi API lấy TẤT CẢ nhân viên
     const fetchEmployees = async () => {
         try {
             const res = await axiosClient.get('/users');
             setNhanVienList(res.data);
             
-            // Mặc định tự động chọn tính quỹ cho tất cả, TRỪ Quản lý (ID 1) và Kỹ thuật (ID 2)
+            // Mặc định tự động chọn tính quỹ cho tất cả, TRỪ Bích Ngọc và Văn Hiền
             const initialSelected = {};
             res.data.forEach(nv => {
-                if (nv.id !== 1 && nv.id !== 2) {
-                    initialSelected[nv.id] = true;
-                } else {
-                    initialSelected[nv.id] = false;
-                }
+                const name = (nv.ho_ten || '').toLowerCase();
+                // Sửa lỗi Ngọc Trân: Chỉ đúng Bích Ngọc và Văn Hiền (hoặc ID 1, 2) mới là cố định
+                const isFixedStaff = name.includes('bích ngọc') || name.includes('văn hiền') || nv.id === 1 || nv.id === 2;
+                initialSelected[nv.id] = !isFixedStaff;
             });
             setSelectedEmployees(initialSelected);
         } catch (err) {
@@ -76,6 +98,7 @@ export default function BudgetTab({ week }) {
         }
     };
 
+    // Lấy toàn bộ ca làm trong tháng
     const fetchShifts = async (start, end) => {
         try {
             const res = await axiosClient.get('/shifts', { 
@@ -87,34 +110,11 @@ export default function BudgetTab({ week }) {
         }
     };
 
-    // Hàm mới: Tính tổng quỹ lương của nguyên THÁNG hiện tại (chống lệch múi giờ khi tách chuỗi)
-    const fetchMonthlyShifts = async (dateStr) => {
-        try {
-            const [y, m] = dateStr.split('-').map(Number);
-            const lastDay = new Date(y, m, 0).getDate();
-
-            const start = `${y}-${String(m).padStart(2, '0')}-01`;
-            const end = `${y}-${String(m).padStart(2, '0')}-${lastDay}`;
-
-            const res = await axiosClient.get('/shifts', { 
-                params: { startDate: `${start} 00:00:00`, endDate: `${end} 23:59:59` } 
-            });
-
-            // Cộng dồn thực lãnh của cả tháng
-            const totalQ8 = res.data.reduce((sum, ca) => ca.id_chi_nhanh === 1 ? sum + Number(ca.luong_thuc_lanh) : sum, 0);
-            const totalAll = res.data.reduce((sum, ca) => sum + Number(ca.luong_thuc_lanh), 0);
-
-            setTongLuongThang({ all: totalAll, q8: totalQ8 });
-        } catch (err) {
-            console.error("Lỗi lấy tổng lương tháng", err);
-        }
-    };
-
     const fetchBudget = async (start, end) => {
         try {
             const res = await axiosClient.get('/budget/q8', { params: { ngay_bat_dau: start, ngay_ket_thuc: end } });
             setBudgetData(res.data);
-            setEditBudgetValue(res.data?.ngan_sach_toi_da || 2500000);
+            setEditBudgetValue(res.data?.ngan_sach_toi_da || 10000000); // Mặc định tháng lớn hơn tuần
         } catch (err) {
             console.error("Lỗi lấy ngân sách", err);
         }
@@ -129,12 +129,12 @@ export default function BudgetTab({ week }) {
 
         try {
             await axiosClient.post('/budget/q8', {
-                ngay_bat_dau: week.start,
-                ngay_ket_thuc: week.end,
+                ngay_bat_dau: startStr,
+                ngay_ket_thuc: endStr,
                 ngan_sach_toi_da: val
             });
             setIsEditingBudget(false);
-            fetchBudget(week.start, week.end);
+            fetchBudget(startStr, endStr);
         } catch (err) {
             alert("Lỗi khi lưu ngân sách!");
         }
@@ -147,7 +147,7 @@ export default function BudgetTab({ week }) {
         }));
     };
 
-    // Khởi tạo danh sách kết quả chứa TẤT CẢ nhân viên
+    // Khởi tạo danh sách kết quả
     const groupedShifts = {};
     nhanVienList.forEach(nv => {
         groupedShifts[nv.id] = {
@@ -155,37 +155,48 @@ export default function BudgetTab({ week }) {
             ho_ten: nv.ho_ten,
             shifts: [],
             tongTienQ8: 0,
-            tongTienQ8Goc: 0,
             tongGioQ8: 0,
             tongGioTatCa: 0
         };
     });
 
-    // Lắp dữ liệu ca làm vào từng nhân viên tương ứng
+    // Lắp dữ liệu ca làm vào
     lichLam.forEach(ca => {
         if (!groupedShifts[ca.id_nguoi_dung]) return;
 
         groupedShifts[ca.id_nguoi_dung].shifts.push(ca);
-        
         const gioLamCa = Number(ca.so_gio_lam_thuong) + Number(ca.so_gio_tang_ca_dem);
         groupedShifts[ca.id_nguoi_dung].tongGioTatCa += gioLamCa;
 
-        if (ca.id_chi_nhanh === 1) {
-            groupedShifts[ca.id_nguoi_dung].tongTienQ8 += Number(ca.luong_thuc_lanh);
-            groupedShifts[ca.id_nguoi_dung].tongTienQ8Goc += gioLamCa * Number(ca.luong_co_ban_luu_tru);
+        if (ca.id_chi_nhanh === 1) { // Chỉ tính tiền cho ca Q8
+            groupedShifts[ca.id_nguoi_dung].tongTienQ8 += gioLamCa * Number(ca.luong_co_ban_luu_tru);
             groupedShifts[ca.id_nguoi_dung].tongGioQ8 += gioLamCa;
         }
     });
 
+    const fixedStaff = [];
+    const hourlyStaff = [];
+
+    Object.values(groupedShifts).forEach(emp => {
+        const name = (emp.ho_ten || '').toLowerCase();
+        // Chỉ Ngọc và Hiền (hoặc Quản lý ID 1, 2) là cố định. Trân được xếp vào Theo Ca.
+        if (name.includes('bích ngọc') || name.includes('văn hiền') || emp.id_nguoi_dung === 1 || emp.id_nguoi_dung === 2) {
+            fixedStaff.push(emp);
+        } else {
+            hourlyStaff.push(emp);
+        }
+    });
+
+    // Tính toán quỹ lương TOÀN THÁNG (chỉ tính Q8)
     const { customTotalSpent, customTotalHours } = Object.values(groupedShifts).reduce((acc, emp) => {
         if (selectedEmployees[emp.id_nguoi_dung]) {
-            acc.customTotalSpent += emp.tongTienQ8Goc;
+            acc.customTotalSpent += emp.tongTienQ8;
             acc.customTotalHours += emp.tongGioQ8;
         }
         return acc;
     }, { customTotalSpent: 0, customTotalHours: 0 });
 
-    const nganSachToiDa = budgetData ? Number(budgetData.ngan_sach_toi_da) : 2500000;
+    const nganSachToiDa = budgetData ? Number(budgetData.ngan_sach_toi_da) : 10000000;
     const percentage = nganSachToiDa > 0 ? (customTotalSpent / nganSachToiDa) * 100 : 0;
     const progressWidth = Math.min(percentage, 100);
 
@@ -199,79 +210,77 @@ export default function BudgetTab({ week }) {
         statusTextColor = 'text-amber-600';
     }
 
-    const currentMonth = week.start ? Number(week.start.split('-')[1]) : new Date().getMonth() + 1;
-
     return (
         <div className="space-y-6">
-            {/* Thanh Giám Sát Ngân Sách */}
+            
+            {/* THANH ĐIỀU HƯỚNG THÁNG */}
+            <div className="flex justify-center items-center gap-4 mb-2">
+                <button 
+                    onClick={handlePrevMonth} 
+                    className="p-2.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-100 hover:scale-105 transition"
+                    title="Tháng trước"
+                >
+                    <ChevronLeft size={20} className="text-[#0B1E3F]" />
+                </button>
+                
+                <div
+                    onClick={handleResetMonth}
+                    className="bg-[#0B1E3F] text-white px-8 py-2.5 rounded-2xl font-black text-sm uppercase cursor-pointer hover:bg-[#1D3557] hover:scale-105 transition shadow-lg flex flex-col items-center justify-center leading-tight"
+                    title="Nhấp để quay về tháng hiện tại"
+                >
+                    <span className="text-[10px] text-[#FFD166] tracking-widest opacity-90">Thống Kê Tổng Hợp</span>
+                    THÁNG: {String(m).padStart(2, '0')}/{y}
+                </div>
+
+                <button 
+                    onClick={handleNextMonth} 
+                    disabled={isNextDisabled} 
+                    className={`p-2.5 bg-white border border-gray-200 rounded-full shadow-sm transition ${isNextDisabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 hover:scale-105'}`}
+                    title="Tháng sau"
+                >
+                    <ChevronRight size={20} className="text-[#0B1E3F]" />
+                </button>
+            </div>
+
+            {/* THANH GIÁM SÁT NGÂN SÁCH QUỸ LƯƠNG (THEO THÁNG) */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 className="text-sm font-extrabold text-[#0B1E3F] flex items-center gap-2 uppercase">
-                        <AlertCircle size={18} className="text-[#FFD166]"/> Giám Sát Quỹ Lương Quận 8 (10% Doanh Thu)
+                        <AlertCircle size={18} className="text-[#FFD166]"/> Giám Sát Quỹ Lương Quận 8 Tháng {m}
                     </h2>
                     
-                    {/* Phần Chỉnh sửa Ngân Sách */}
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-500">Ngân sách tuần này:</span>
+                        <span className="text-xs font-bold text-gray-500">Ngân sách tháng này:</span>
                         {isEditingBudget ? (
                             <div className="flex items-center gap-1.5 bg-gray-50 border rounded-lg px-2 py-1">
                                 <input
                                     type="number"
-                                    step="50000"
+                                    step="500000"
                                     value={editBudgetValue}
                                     onChange={(e) => setEditBudgetValue(e.target.value)}
                                     className="w-28 text-xs font-bold text-[#0B1E3F] bg-transparent outline-none"
                                     autoFocus
                                 />
                                 <span className="text-xs text-gray-500">đ</span>
-                                <button 
-                                    onClick={handleSaveBudget} 
-                                    className="p-1 text-emerald-600 hover:bg-emerald-100 rounded transition"
-                                    title="Lưu"
-                                >
-                                    <Check size={14}/>
-                                </button>
-                                <button 
-                                    onClick={() => {
-                                        setIsEditingBudget(false);
-                                        setEditBudgetValue(nganSachToiDa);
-                                    }} 
-                                    className="p-1 text-gray-400 hover:bg-gray-200 rounded transition"
-                                    title="Hủy"
-                                >
-                                    <X size={14}/>
-                                </button>
+                                <button onClick={handleSaveBudget} className="p-1 text-emerald-600 hover:bg-emerald-100 rounded transition"><Check size={14}/></button>
+                                <button onClick={() => { setIsEditingBudget(false); setEditBudgetValue(nganSachToiDa); }} className="p-1 text-gray-400 hover:bg-gray-200 rounded transition"><X size={14}/></button>
                             </div>
                         ) : (
                             <div className="flex items-center gap-1.5">
                                 <span className="text-xs font-bold text-[#0B1E3F] bg-gray-100 px-2.5 py-1 rounded-md">
                                     {nganSachToiDa.toLocaleString()}đ
                                 </span>
-                                <button 
-                                    onClick={() => setIsEditingBudget(true)}
-                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
-                                    title="Chỉnh sửa hạn mức ngân sách"
-                                >
-                                    <Edit2 size={14}/>
-                                </button>
+                                <button onClick={() => setIsEditingBudget(true)} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 size={14}/></button>
                             </div>
                         )}
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    {/* Dòng Tổng Lương Tháng */}
-                    <div className="flex flex-col sm:flex-row justify-between text-sm font-bold gap-1 pb-3 border-b border-gray-100">
-                        <span className="text-gray-600 flex items-center gap-1.5">
-                            <CalendarDays size={16} className="text-blue-500" />
-                            Tổng quỹ lương tháng {currentMonth} đã chi (Q8):
-                        </span>
-                        <span className="text-blue-700 text-base">{tongLuongThang.q8.toLocaleString()}đ</span>
-                    </div>
-
                     <div className="flex flex-col sm:flex-row justify-between text-sm font-bold gap-1">
-                        <span className="text-[#0B1E3F]">
-                            Đã chi tuần này (Q8): {customTotalSpent.toLocaleString()}đ 
+                        <span className="text-[#0B1E3F] flex items-center gap-1.5">
+                            <CalendarDays size={16} className="text-blue-500" />
+                            Đã chi trong tháng {m} (Q8): {customTotalSpent.toLocaleString()}đ 
                             <span className="text-gray-500 font-normal ml-2">({customTotalHours} giờ làm)</span>
                         </span>
                         <span className={`text-xs sm:text-sm font-bold ${statusTextColor}`}>
@@ -279,112 +288,137 @@ export default function BudgetTab({ week }) {
                         </span>
                     </div>
 
-                    {/* Thanh tiến độ đổi màu linh hoạt */}
                     <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-200">
-                        <div 
-                            className={`h-4 transition-all duration-500 ${barColor}`} 
-                            style={{ width: `${progressWidth}%` }}
-                        ></div>
+                        <div className={`h-4 transition-all duration-500 ${barColor}`} style={{ width: `${progressWidth}%` }}></div>
                     </div>
 
                     {percentage > 100 && (
                         <p className="text-xs text-red-600 font-bold animate-pulse">
-                            CẢNH BÁO: Tổng quỹ lương đã vượt quá mức cho phép ({percentage.toFixed(1)}%)!
+                            CẢNH BÁO: Tổng quỹ lương tháng đã vượt quá mức cho phép ({percentage.toFixed(1)}%)!
                         </p>
                     )}
                 </div>
             </div>
 
-            {/* Bảng Chi Tiết Lương 3 Thẻ / Hàng */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase">Chi Tiết Lương Nhân Sự (Tích chọn để tính vào Quỹ Q8)</h2>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {Object.values(groupedShifts).map((emp) => {
-                        const isChecked = !!selectedEmployees[emp.id_nguoi_dung];
-                        return (
-                            <div 
-                                key={emp.id_nguoi_dung} 
-                                className={`bg-white border rounded-xl flex flex-col overflow-hidden shadow-sm transition ${
-                                    isChecked ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 opacity-70'
-                                }`}
-                            >
-                                {/* Header: Tên và Ô Tích Chọn */}
-                                <div className="bg-[#0B1E3F] text-white p-3 flex justify-between items-center">
-                                    <span className="text-sm font-extrabold truncate max-w-[150px] uppercase tracking-wide" title={emp.ho_ten}>
-                                        {emp.ho_ten}
-                                    </span>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => toggleEmployee(emp.id_nguoi_dung)}
-                                        className="text-[#FFD166] hover:scale-110 transition flex items-center gap-1.5 text-xs font-semibold border border-white/20 bg-white/10 px-2.5 py-1 rounded"
-                                    >
-                                        {isChecked ? <CheckSquare size={14}/> : <Square size={14}/>}
-                                        {isChecked ? 'Tính quỹ' : 'Bỏ qua'}
-                                    </button>
-                                </div>
-                                
-                                {/* Danh sách ca làm có kèm số giờ và số tiền từng ca */}
-                                <div className="flex-1 p-2 space-y-2 max-h-[220px] overflow-y-auto bg-gray-50 text-xs">
-                                    {emp.shifts.length > 0 ? (
-                                        emp.shifts.map((s, i) => {
-                                            const startParsed = parseMySqlDateTime(s.thoi_gian_bat_dau);
-                                            const endParsed = parseMySqlDateTime(s.thoi_gian_ket_thuc);
-                                            const isQ8 = s.id_chi_nhanh === 1;
-                                            const shiftHours = Number(s.so_gio_lam_thuong) + Number(s.so_gio_tang_ca_dem);
-                                            const tienCaLam = Number(s.luong_thuc_lanh);
-                                            
-                                            return (
-                                                <div 
-                                                    key={i} 
-                                                    className={`flex items-center justify-between border-b pb-1.5 pt-1.5 ${
-                                                        isQ8 ? 'text-[#0B1E3F]' : 'text-gray-400 line-through'
-                                                    }`}
-                                                >
-                                                    <span className="font-bold w-8">{startParsed.day}/{startParsed.month}</span>
-                                                    <span className="w-16 text-center">{startParsed.hour}h - {endParsed.hour}h</span>
-                                                    <div className="flex items-center gap-1 w-14 justify-center">
-                                                        <span className="text-[10px] text-gray-500">({shiftHours}h)</span>
-                                                        <span className={`font-bold px-1 rounded text-[10px] ${
-                                                            isQ8 ? 'bg-[#FFD166]/60 text-[#0B1E3F]' : 'bg-gray-200 text-gray-500'
-                                                        }`}>
-                                                            {isQ8 ? 'Q8' : 'F1'}
-                                                        </span>
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-8">
+                
+                {/* KHU VỰC NHÂN SỰ CỐ ĐỊNH */}
+                {fixedStaff.length > 0 && (
+                    <div>
+                        <div className="flex items-center gap-2 mb-4 border-b-2 border-gray-100 pb-2">
+                            <ShieldCheck size={20} className="text-slate-500" />
+                            <h2 className="text-sm font-extrabold text-slate-700 uppercase">
+                                Nhóm Nhân Sự Quản Lý & Cố Định <span className="text-xs font-normal italic text-slate-500 ml-2">(Chỉ đối soát giờ làm, không tính lương theo ca)</span>
+                            </h2>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {fixedStaff.map((emp) => (
+                                <div key={emp.id_nguoi_dung} className="bg-slate-50 border border-slate-200 rounded-xl flex flex-col overflow-hidden shadow-sm transition">
+                                    <div className="bg-slate-600 text-white p-3 flex justify-between items-center">
+                                        <span className="text-sm font-extrabold truncate max-w-[180px] uppercase tracking-wide" title={emp.ho_ten}>{emp.ho_ten}</span>
+                                        <span className="text-[10px] bg-slate-500 px-2 py-0.5 rounded font-semibold">Cố Định</span>
+                                    </div>
+                                    <div className="flex-1 p-2 space-y-2 max-h-[250px] overflow-y-auto text-xs">
+                                        {emp.shifts.length > 0 ? (
+                                            emp.shifts.map((s, i) => {
+                                                const startParsed = parseMySqlDateTime(s.thoi_gian_bat_dau);
+                                                const endParsed = parseMySqlDateTime(s.thoi_gian_ket_thuc);
+                                                const shiftHours = Number(s.so_gio_lam_thuong) + Number(s.so_gio_tang_ca_dem);
+                                                const isQ8 = s.id_chi_nhanh === 1;
+                                                return (
+                                                    <div key={i} className="flex items-center justify-between border-b border-slate-200 pb-1.5 pt-1.5 text-slate-700">
+                                                        <span className="font-bold w-12">{startParsed.day}/{startParsed.month}</span>
+                                                        <span className="flex-1 text-center font-medium">{startParsed.hour}h - {endParsed.hour}h</span>
+                                                        <div className="flex items-center gap-1.5 justify-end w-16">
+                                                            <span className="font-bold">{shiftHours}h</span>
+                                                            <span className={`px-1 rounded text-[9px] font-bold ${isQ8 ? 'bg-[#FFD166]/80 text-[#0B1E3F]' : 'bg-slate-300 text-slate-600'}`}>{isQ8 ? 'Q8' : 'F1'}</span>
+                                                        </div>
                                                     </div>
-                                                    <span className={`font-bold text-right w-16 ${isQ8 ? 'text-blue-700' : 'text-gray-400'}`}>
-                                                        {tienCaLam.toLocaleString()}đ
-                                                    </span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full min-h-[60px] text-gray-400 italic font-medium">
-                                            Không có ca làm trong tuần này.
-                                        </div>
-                                    )}
+                                                );
+                                            })
+                                        ) : <div className="flex items-center justify-center h-full min-h-[60px] text-slate-400 italic font-medium">Không có ca làm.</div>}
+                                    </div>
+                                    <div className="bg-slate-200/50 p-3 text-xs font-bold border-t border-slate-200 flex justify-between items-center text-slate-700">
+                                        <span className="flex items-center gap-1"><Clock size={14}/> Tổng giờ đã làm tháng này:</span>
+                                        <span className="text-sm font-black text-slate-800">{emp.tongGioTatCa} giờ</span>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-                                {/* Footer tổng giờ & tổng tiền */}
-                                <div className="bg-yellow-50/80 p-3 text-xs font-bold space-y-1.5 border-t border-yellow-200">
-                                    <div className="flex justify-between text-gray-700 text-[11px] items-center">
-                                        <span className="flex items-center gap-1 font-semibold"><Clock size={12}/> Tổng giờ làm:</span>
-                                        <span className="text-blue-700 font-extrabold text-xs">{emp.tongGioTatCa}h</span>
+                {/* KHU VỰC NHÂN SỰ TÍNH LƯƠNG THEO CA */}
+                {hourlyStaff.length > 0 && (
+                    <div>
+                        <div className="flex items-center gap-2 mb-4 border-b-2 border-gray-100 pb-2 mt-4">
+                            <Users size={20} className="text-[#0B1E3F]" />
+                            <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase">
+                                Nhóm Nhân Sự Tính Lương Theo Ca <span className="text-xs font-normal italic text-gray-500 ml-2">(Tích chọn ô "Tính quỹ" để đưa vào báo cáo Q8)</span>
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {hourlyStaff.map((emp) => {
+                                const isChecked = !!selectedEmployees[emp.id_nguoi_dung];
+                                return (
+                                    <div key={emp.id_nguoi_dung} className={`bg-white border rounded-xl flex flex-col overflow-hidden shadow-sm transition ${isChecked ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 opacity-75'}`}>
+                                        <div className="bg-[#0B1E3F] text-white p-3 flex justify-between items-center">
+                                            <span className="text-sm font-extrabold truncate max-w-[140px] uppercase tracking-wide" title={emp.ho_ten}>{emp.ho_ten}</span>
+                                            <button type="button" onClick={() => toggleEmployee(emp.id_nguoi_dung)} className="text-[#FFD166] hover:scale-105 transition flex items-center gap-1.5 text-xs font-semibold border border-white/20 bg-white/10 px-2.5 py-1 rounded cursor-pointer">
+                                                {isChecked ? <CheckSquare size={14}/> : <Square size={14}/>}
+                                                {isChecked ? 'Tính quỹ' : 'Bỏ qua'}
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="flex-1 p-2 space-y-2 max-h-[250px] overflow-y-auto bg-gray-50 text-xs">
+                                            {emp.shifts.length > 0 ? (
+                                                emp.shifts.map((s, i) => {
+                                                    const startParsed = parseMySqlDateTime(s.thoi_gian_bat_dau);
+                                                    const endParsed = parseMySqlDateTime(s.thoi_gian_ket_thuc);
+                                                    const isQ8 = s.id_chi_nhanh === 1;
+                                                    const shiftHours = Number(s.so_gio_lam_thuong) + Number(s.so_gio_tang_ca_dem);
+                                                    const tienCaLam = Number(s.luong_thuc_lanh);
+                                                    
+                                                    return (
+                                                        <div key={i} className="flex items-center justify-between border-b pb-1.5 pt-1.5 text-[#0B1E3F]">
+                                                            <span className="font-bold w-8">{startParsed.day}/{startParsed.month}</span>
+                                                            <span className="w-16 text-center">{startParsed.hour}h - {endParsed.hour}h</span>
+                                                            <div className="flex items-center gap-1 w-14 justify-center">
+                                                                <span className="text-[10px] text-gray-500">({shiftHours}h)</span>
+                                                                <span className={`font-bold px-1 rounded text-[10px] ${isQ8 ? 'bg-[#FFD166]/60 text-[#0B1E3F]' : 'bg-gray-200 text-gray-500'}`}>
+                                                                    {isQ8 ? 'Q8' : 'F1'}
+                                                                </span>
+                                                            </div>
+                                                            <span className={`font-bold text-right w-16 ${isQ8 ? 'text-blue-700' : 'text-gray-400'}`}>
+                                                                {tienCaLam.toLocaleString()}đ
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : <div className="flex items-center justify-center h-full min-h-[60px] text-gray-400 italic font-medium">Không có ca làm trong tháng.</div>}
+                                        </div>
+
+                                        <div className="bg-yellow-50/80 p-3 text-xs font-bold space-y-1.5 border-t border-yellow-200">
+                                            <div className="flex justify-between text-gray-700 text-[11px] items-center">
+                                                <span className="flex items-center gap-1 font-semibold"><Clock size={12}/> Tổng giờ làm tháng:</span>
+                                                <span className="text-blue-700 font-extrabold text-xs">{emp.tongGioTatCa}h</span>
+                                            </div>
+                                            <div className="flex justify-between text-[#0B1E3F] text-sm pt-2 border-t border-yellow-300 items-center mt-1">
+                                                <span className="font-extrabold">Thực lãnh tháng (Q8):</span>
+                                                {/* Chỉ cộng tiền của ca Q8 vào thực lãnh */}
+                                                <span className="font-black text-emerald-700">
+                                                    {emp.shifts.filter(s => s.id_chi_nhanh === 1).reduce((t, x) => t + Number(x.luong_thuc_lanh), 0).toLocaleString()}đ
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-gray-600 text-[11px] items-center">
-                                        <span className="font-semibold">Lương ca Q8:</span>
-                                        <span className="font-bold">{emp.tongTienQ8.toLocaleString()}đ</span>
-                                    </div>
-                                    <div className="flex justify-between text-[#0B1E3F] text-sm pt-2 border-t border-yellow-300 items-center">
-                                        <span className="font-extrabold">Thực lãnh:</span>
-                                        <span className="font-black">{emp.shifts.reduce((t, x) => t + Number(x.luong_thuc_lanh), 0).toLocaleString()}đ</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

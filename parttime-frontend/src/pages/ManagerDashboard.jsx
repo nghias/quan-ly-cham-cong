@@ -76,7 +76,7 @@ export default function ManagerDashboard() {
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const menuRef = useRef(null);
 
-    // Profile Form (Thêm id để dùng cho route PUT /users/:id)
+    // Profile Form
     const [profileForm, setProfileForm] = useState({ id: '', ho_ten: '', so_dien_thoai: '', ma_nhan_vien: '', vai_tro: '' });
     // Password Form
     const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -96,7 +96,6 @@ export default function ManagerDashboard() {
     const openProfileModal = async () => {
         setIsMenuOpen(false);
         try {
-            // KHỚP ROUTER: Dùng /me thay vì /users/me
             const res = await axiosClient.get('/me'); 
             setProfileForm({
                 id: res.data.id,
@@ -114,11 +113,10 @@ export default function ManagerDashboard() {
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
         try {
-            // KHỚP ROUTER: Dùng /users/:id (suaTaiKhoan) để cập nhật thông tin
             await axiosClient.put(`/users/${profileForm.id}`, {
                 ho_ten: profileForm.ho_ten,
                 so_dien_thoai: profileForm.so_dien_thoai,
-                vai_tro: profileForm.vai_tro // Truyền lại vai_tro hiện tại để tránh bị mất data nếu API yêu cầu
+                vai_tro: profileForm.vai_tro 
             });
             alert("Cập nhật thông tin thành công!");
             setIsProfileModalOpen(false);
@@ -148,14 +146,13 @@ export default function ManagerDashboard() {
         }
 
         try {
-            // KHỚP ROUTER: Dùng /change-password thay vì /users/change-password
             await axiosClient.put('/change-password', {
                 oldPassword: passwordForm.oldPassword,
                 newPassword: passwordForm.newPassword
             });
             alert("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
             setIsPasswordModalOpen(false);
-            logout(); // Đăng xuất sau khi đổi pass thành công
+            logout(); 
         } catch (error) {
             alert("Đổi mật khẩu thất bại: " + (error.response?.data?.error || error.message));
         }
@@ -273,8 +270,8 @@ export default function ManagerDashboard() {
                 </div>
             </header>
 
-            {/* Thanh chọn Tuần */}
-            {(activeTab === 'schedule' || activeTab === 'budget') && (
+            {/* Thanh chọn Tuần CHỈ hiển thị ở tab schedule */}
+            {activeTab === 'schedule' && (
                 <div className="max-w-[1920px] mx-auto px-4 mt-6 flex justify-center items-center gap-3 sm:gap-4">
                     <button 
                         onClick={() => setCurrentWeekIdx(Math.max(0, currentWeekIdx - 1))}

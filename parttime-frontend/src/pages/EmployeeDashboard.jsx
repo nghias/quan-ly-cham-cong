@@ -3,11 +3,9 @@ import { AuthContext } from '../context/AuthContext';
 import { LogOut, CalendarCheck, CircleDollarSign, ChevronLeft, ChevronRight, Menu, User, Key, X, Save, CheckCircle2 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
-// Import Tab dùng chung và Tab lương mới
 import ScheduleTab from '../components/manager/ScheduleTab';
 import EmployeeSalaryTab from '../components/employee/EmployeeSalaryTab';
 
-// Hàm tự động sinh danh sách tuần
 const generateDynamicWeeks = () => {
     const weeks = [];
     const today = new Date();
@@ -69,7 +67,6 @@ export default function EmployeeDashboard() {
 
     const [currentWeekIdx, setCurrentWeekIdx] = useState(initialWeekIdx);
 
-    // STATE CHO DROPDOWN & MODALS
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -155,13 +152,9 @@ export default function EmployeeDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            
-            {/* HEADER */}
             <header className="bg-[#0B1E3F] text-white shadow-lg sticky top-0 z-40">
                 <div className="max-w-[1920px] mx-auto px-4">
                     <div className="flex flex-wrap items-center justify-between py-3 gap-y-3 relative">
-                        
-                        {/* LOGO */}
                         <div className="flex items-center gap-3">
                             <img src="/logo.jpg" alt="SundayGame" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border-2 border-white/10 shadow-sm bg-white" />
                             <div className="hidden sm:block">
@@ -170,7 +163,6 @@ export default function EmployeeDashboard() {
                             </div>
                         </div>
 
-                        {/* ĐIỀU KHIỂN TAB */}
                         <div className="w-full md:w-auto order-last md:order-none flex justify-center">
                             <div className="flex items-center bg-white/10 p-1 rounded-xl shadow-inner w-full sm:w-auto">
                                 {[
@@ -190,7 +182,6 @@ export default function EmployeeDashboard() {
                             </div>
                         </div>
 
-                        {/* TÀI KHOẢN */}
                         <div className="flex items-center gap-3 sm:gap-4 relative" ref={menuRef}>
                             <div className="text-right hidden sm:block">
                                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Xin chào,</p>
@@ -222,22 +213,23 @@ export default function EmployeeDashboard() {
                 </div>
             </header>
 
-            {/* CHỌN TUẦN */}
-            <div className="max-w-[1920px] mx-auto px-4 mt-6 flex justify-center items-center gap-3 sm:gap-4">
-                <button onClick={() => setCurrentWeekIdx(Math.max(0, currentWeekIdx - 1))} disabled={currentWeekIdx === 0} className="p-2 sm:p-2.5 bg-white border border-gray-200 rounded-full shadow-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"><ChevronLeft size={20} className="text-[#0B1E3F]"/></button>
-                <div className="bg-[#0B1E3F] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm shadow-md uppercase tracking-wide min-w-[240px] text-center">
-                    Tuần: {weeksList[currentWeekIdx]?.label}
+            {/* CHỈ HIỂN THỊ CHỌN TUẦN Ở TAB LỊCH LÀM VIỆC */}
+            {activeTab === 'schedule' && (
+                <div className="max-w-[1920px] mx-auto px-4 mt-6 flex justify-center items-center gap-3 sm:gap-4">
+                    <button onClick={() => setCurrentWeekIdx(Math.max(0, currentWeekIdx - 1))} disabled={currentWeekIdx === 0} className="p-2 sm:p-2.5 bg-white border border-gray-200 rounded-full shadow-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"><ChevronLeft size={20} className="text-[#0B1E3F]"/></button>
+                    <div className="bg-[#0B1E3F] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm shadow-md uppercase tracking-wide min-w-[240px] text-center">
+                        Tuần: {weeksList[currentWeekIdx]?.label}
+                    </div>
+                    <button onClick={() => setCurrentWeekIdx(Math.min(weeksList.length - 1, currentWeekIdx + 1))} disabled={currentWeekIdx === weeksList.length - 1} className="p-2 sm:p-2.5 bg-white border border-gray-200 rounded-full shadow-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"><ChevronRight size={20} className="text-[#0B1E3F]"/></button>
                 </div>
-                <button onClick={() => setCurrentWeekIdx(Math.min(weeksList.length - 1, currentWeekIdx + 1))} disabled={currentWeekIdx === weeksList.length - 1} className="p-2 sm:p-2.5 bg-white border border-gray-200 rounded-full shadow-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"><ChevronRight size={20} className="text-[#0B1E3F]"/></button>
-            </div>
+            )}
 
             {/* NỘI DUNG CHÍNH */}
             <main className="max-w-[1920px] mx-auto px-2 sm:px-4 mt-6 space-y-6">
                 {activeTab === 'schedule' && <ScheduleTab week={weeksList[currentWeekIdx]} />}
-                {activeTab === 'salary' && <EmployeeSalaryTab week={weeksList[currentWeekIdx]} />}
+                {activeTab === 'salary' && <EmployeeSalaryTab />}
             </main>
 
-            {/* MODALS GIỮ NGUYÊN NHƯ BÊN MANAGER */}
             {isProfileModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up">
