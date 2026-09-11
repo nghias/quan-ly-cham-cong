@@ -96,7 +96,7 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
                     <div onClick={() => onHourChange(prevH)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevH).padStart(2, '0')}</div>
                     <div className="w-full flex justify-center">
                         {isEditingH ? (
-                            <input type="number" autoFocus value={tempH} onChange={(e) => setTempH(e.target.value)} onBlur={handleBlurH} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5"/>
+                            <input type="number" autoFocus value={tempH} onChange={(e) => setTempH(e.target.value)} onBlur={handleBlurH} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
                         ) : (
                             <div onClick={() => setIsEditingH(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(hour).padStart(2, '0')}</div>
                         )}
@@ -108,7 +108,7 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
                     <div onClick={() => onMinuteChange(prevM)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevM).padStart(2, '0')}</div>
                     <div className="w-full flex justify-center">
                         {isEditingM ? (
-                            <input type="number" autoFocus value={tempM} onChange={(e) => setTempM(e.target.value)} onBlur={handleBlurM} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5"/>
+                            <input type="number" autoFocus value={tempM} onChange={(e) => setTempM(e.target.value)} onBlur={handleBlurM} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
                         ) : (
                             <div onClick={() => setIsEditingM(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(minute).padStart(2, '0')}</div>
                         )}
@@ -797,7 +797,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ (CÓ FORM CHỈNH SỬA CHI NHÁNH MỚI) */}
+            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
@@ -812,7 +812,6 @@ export default function ScheduleTab({ week }) {
                                 <WheelTimePicker label="Kết Thúc" hour={formData.gio_ket_thuc_h} minute={formData.gio_ket_thuc_m} minHour={1} maxHour={24} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_ket_thuc_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_ket_thuc_m: m }))} />
                             </div>
                             
-                            {/* FIX LAYOUT: TÁCH RIÊNG 2 Ô NÀY THÀNH CỘT DỌC ĐỂ KHÔNG BỊ ÉP SIZE */}
                             <div className="flex flex-col gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Chi Nhánh</label>
@@ -840,7 +839,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL QUẢN LÝ CHI NHÁNH */}
+            {/* MODAL QUẢN LÝ CHI NHÁNH VỚI ĐỊNH DẠNG TIỀN VN VÀ CÁC TRƯỜNG PHỤ CẤP, KHẤU TRỪ */}
             {isBranchModalOpen && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
