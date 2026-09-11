@@ -90,30 +90,30 @@ function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, mi
 
     return (
         <div className="space-y-1">
-            <label className="block text-xs font-extrabold text-gray-500 uppercase text-center">{label}</label>
-            <div className="flex items-center justify-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-inner">
-                <div ref={hourContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1">
-                    <div onClick={() => onHourChange(prevH)} className="text-gray-400 text-sm font-semibold hover:text-gray-600 py-1 cursor-pointer">{String(prevH).padStart(2, '0')}</div>
-                    <div>
+            <label className="block text-[11px] font-extrabold text-gray-500 uppercase text-center tracking-wide">{label}</label>
+            <div className="flex items-center justify-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-2 shadow-inner">
+                <div ref={hourContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1 w-12">
+                    <div onClick={() => onHourChange(prevH)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevH).padStart(2, '0')}</div>
+                    <div className="w-full flex justify-center">
                         {isEditingH ? (
-                            <input type="number" autoFocus value={tempH} onChange={(e) => setTempH(e.target.value)} onBlur={handleBlurH} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }} onFocus={(e) => e.target.select()} className="w-14 bg-white border-2 border-blue-500 rounded-lg text-xl font-black text-[#0B1E3F] text-center outline-none py-1"/>
+                            <input type="number" autoFocus value={tempH} onChange={(e) => setTempH(e.target.value)} onBlur={handleBlurH} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5"/>
                         ) : (
-                            <div onClick={() => setIsEditingH(true)} className="text-2xl font-black text-[#0B1E3F] bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(hour).padStart(2, '0')}</div>
+                            <div onClick={() => setIsEditingH(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(hour).padStart(2, '0')}</div>
                         )}
                     </div>
-                    <div onClick={() => onHourChange(nextH)} className="text-gray-400 text-sm font-semibold hover:text-gray-600 py-1 cursor-pointer">{String(nextH).padStart(2, '0')}</div>
+                    <div onClick={() => onHourChange(nextH)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(nextH).padStart(2, '0')}</div>
                 </div>
-                <span className="font-black text-gray-400 text-2xl pb-1">:</span>
-                <div ref={minuteContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1">
-                    <div onClick={() => onMinuteChange(prevM)} className="text-gray-400 text-sm font-semibold hover:text-gray-600 py-1 cursor-pointer">{String(prevM).padStart(2, '0')}</div>
-                    <div>
+                <span className="font-black text-gray-300 text-lg pb-1">:</span>
+                <div ref={minuteContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1 w-12">
+                    <div onClick={() => onMinuteChange(prevM)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevM).padStart(2, '0')}</div>
+                    <div className="w-full flex justify-center">
                         {isEditingM ? (
-                            <input type="number" autoFocus value={tempM} onChange={(e) => setTempM(e.target.value)} onBlur={handleBlurM} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }} onFocus={(e) => e.target.select()} className="w-14 bg-white border-2 border-blue-500 rounded-lg text-xl font-black text-[#0B1E3F] text-center outline-none py-1"/>
+                            <input type="number" autoFocus value={tempM} onChange={(e) => setTempM(e.target.value)} onBlur={handleBlurM} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5"/>
                         ) : (
-                            <div onClick={() => setIsEditingM(true)} className="text-2xl font-black text-[#0B1E3F] bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(minute).padStart(2, '0')}</div>
+                            <div onClick={() => setIsEditingM(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(minute).padStart(2, '0')}</div>
                         )}
                     </div>
-                    <div onClick={() => onMinuteChange(nextM)} className="text-gray-400 text-sm font-semibold hover:text-gray-600 py-1 cursor-pointer">{String(nextM).padStart(2, '0')}</div>
+                    <div onClick={() => onMinuteChange(nextM)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(nextM).padStart(2, '0')}</div>
                 </div>
             </div>
         </div>
@@ -716,7 +716,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             </div>
 
-            {/* 3. TRỢ LÝ KIỂM SOÁT NGÂN SÁCH */}
+            {/* 3. TRỢ LÝ KIỂM SOÁT NGÂN SÁCH DÀNH CHO CÁC THÁNG TRONG TUẦN */}
             {isManager && budgetStatsList.map((stat, idx) => {
                 const isOver = stat.spentThisWeek > stat.allocatedThisWeek && !stat.isPastSegment;
                 
@@ -784,7 +784,7 @@ export default function ScheduleTab({ week }) {
                                 <div><p className="text-sm font-bold text-[#0B1E3F] mb-1">{formData.ho_ten}</p><p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><Clock size={12}/> Ngày: {formData.ngay_lam.split('-').reverse().join('/')}</p></div>
                                 <button type="button" onClick={handleSelectFullDayRegistration} className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-extrabold cursor-pointer shadow-2xs">Cả ngày (Full)</button>
                             </div>
-                            <div className="flex flex-col gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <WheelTimePicker label="Bắt Đầu" hour={formData.gio_bat_dau_h} minute={formData.gio_bat_dau_m} minHour={0} maxHour={23} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_bat_dau_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_bat_dau_m: m }))} />
                                 <WheelTimePicker label="Kết Thúc" hour={formData.gio_ket_thuc_h} minute={formData.gio_ket_thuc_m} minHour={1} maxHour={24} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_ket_thuc_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_ket_thuc_m: m }))} />
                             </div>
@@ -797,7 +797,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
+            {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ (CÓ FORM CHỈNH SỬA CHI NHÁNH MỚI) */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
