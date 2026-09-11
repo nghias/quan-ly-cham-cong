@@ -173,6 +173,34 @@ export default function ScheduleTab({ week }) {
     };
     const weekDates = getWeekDates(week.start);
 
+    // HÀM TẢI DỮ LIỆU ĐĂNG KÝ
+    const fetchRegistrations = async (start, end) => {
+        try {
+            const res = await axiosClient.get('/shifts/registrations', { params: { startDate: start, endDate: end } });
+            const grouped = {};
+            res.data.forEach(curr => {
+                if (!grouped[curr.id_nguoi_dung]) grouped[curr.id_nguoi_dung] = { raw: {}, data: {} };
+                const dayOfWeek = new Date(curr.ngay_dang_ky).getDay();
+                const dayKey = dayOfWeek === 0 ? 'cn' : `t${dayOfWeek + 1}`;
+                const [sH, sM] = curr.gio_bat_dau.split(':').map(Number);
+                const [eH, eM] = curr.gio_ket_thuc.split(':').map(Number);
+                const sStr = sM > 0 ? `${sH}h${String(sM).padStart(2, '0')}` : `${sH}h`;
+                const eStr = eM > 0 ? `${eH}h${String(eM).padStart(2, '0')}` : `${eH}h`;
+                grouped[curr.id_nguoi_dung].raw[dayKey] = curr;
+                grouped[curr.id_nguoi_dung].data[dayKey] = (sH === 8 && eH >= 22) ? 'Full' : `${sStr}-${eStr}`;
+            });
+            setDangKyCa(grouped);
+        } catch (err) {}
+    };
+
+    // HÀM TẢI LỊCH LÀM THỰC TẾ
+    const fetchShifts = async (start, end) => {
+        try {
+            const res = await axiosClient.get('/shifts', { params: { startDate: `${start} 00:00:00`, endDate: `${end} 23:59:59` } });
+            setLichLam(res.data);
+        } catch (err) {}
+    };
+
     const fetchMonthData = async (startStr) => {
         const weekDatesArr = getWeekDates(startStr);
         const uniqueMonthsMap = new Map();
@@ -716,7 +744,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             </div>
 
-            {/* 3. TRỢ LÝ KIỂM SOÁT NGÂN SÁCH DÀNH CHO CÁC THÁNG TRONG TUẦN */}
+            {/* 3. TRỢ LÝ KIỂM SOÁT NGÂN SÁCH */}
             {isManager && budgetStatsList.map((stat, idx) => {
                 const isOver = stat.spentThisWeek > stat.allocatedThisWeek && !stat.isPastSegment;
                 
@@ -784,7 +812,7 @@ export default function ScheduleTab({ week }) {
                                 <div><p className="text-sm font-bold text-[#0B1E3F] mb-1">{formData.ho_ten}</p><p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><Clock size={12}/> Ngày: {formData.ngay_lam.split('-').reverse().join('/')}</p></div>
                                 <button type="button" onClick={handleSelectFullDayRegistration} className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-extrabold cursor-pointer shadow-2xs">Cả ngày (Full)</button>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-4">
                                 <WheelTimePicker label="Bắt Đầu" hour={formData.gio_bat_dau_h} minute={formData.gio_bat_dau_m} minHour={0} maxHour={23} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_bat_dau_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_bat_dau_m: m }))} />
                                 <WheelTimePicker label="Kết Thúc" hour={formData.gio_ket_thuc_h} minute={formData.gio_ket_thuc_m} minHour={1} maxHour={24} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_ket_thuc_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_ket_thuc_m: m }))} />
                             </div>
@@ -839,7 +867,7 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* MODAL QUẢN LÝ CHI NHÁNH VỚI ĐỊNH DẠNG TIỀN VN VÀ CÁC TRƯỜNG PHỤ CẤP, KHẤU TRỪ */}
+            {/* MODAL QUẢN LÝ CHI NHÁNH */}
             {isBranchModalOpen && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
