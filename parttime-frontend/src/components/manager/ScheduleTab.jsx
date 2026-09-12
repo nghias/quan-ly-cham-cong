@@ -1,124 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
-import { X, Save, Trash2, Clock, Plus, Settings, Edit, Check, RefreshCw, Wallet } from 'lucide-react';
+import { X, Trash2, Clock, Plus, Settings, Edit, Check, RefreshCw, Wallet, AlertTriangle } from 'lucide-react';
 import { io } from 'socket.io-client';
+import WheelTimePicker from '../common/WheelTimePicker';
+import { parseMySqlDateTime, formatVND } from '../../utils/helpers';
 
 const SOCKET_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:5000' 
     : 'https://quan-ly-cham-cong.onrender.com';
 const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-function parseMySqlDateTime(dateTimeStr) {
-    if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
-    if (isLocal) {
-        const d = new Date(dateTimeStr);
-        const year = d.getFullYear(); const month = d.getMonth() + 1; const day = d.getDate();
-        const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        return { year, month, day, hour: d.getHours(), minute: d.getMinutes(), dateKey };
-    } else {
-        const cleaned = String(dateTimeStr).replace('T', ' ').replace('Z', '').split('.')[0];
-        const [datePart, timePart] = cleaned.split(' ');
-        let year = 0, month = 0, day = 0, hour = 0, minute = 0;
-        if (datePart) {
-            const parts = datePart.split('-');
-            if (parts.length === 3) { year = parseInt(parts[0], 10); month = parseInt(parts[1], 10); day = parseInt(parts[2], 10); }
-        }
-        if (timePart) {
-            const timeParts = timePart.split(':');
-            if (timeParts.length >= 2) { hour = parseInt(timeParts[0], 10); minute = parseInt(timeParts[1], 10); }
-        }
-        const dateKey = (year && month && day) ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
-        return { year, month, day, hour, minute, dateKey };
-    }
-}
-
-function WheelTimePicker({ hour, minute, onHourChange, onMinuteChange, label, minHour = 0, maxHour = 23 }) {
-    const [isEditingH, setIsEditingH] = useState(false);
-    const [tempH, setTempH] = useState(String(hour).padStart(2, '0'));
-    const [isEditingM, setIsEditingM] = useState(false);
-    const [tempM, setTempM] = useState(String(minute).padStart(2, '0'));
-    
-    const hourContainerRef = useRef(null); const minuteContainerRef = useRef(null);
-    const hourRef = useRef(hour); hourRef.current = hour;
-    const minuteRef = useRef(minute); minuteRef.current = minute;
-
-    useEffect(() => { setTempH(String(hour).padStart(2, '0')); }, [hour]);
-    useEffect(() => { setTempM(String(minute).padStart(2, '0')); }, [minute]);
-
-    useEffect(() => {
-        const hourEl = hourContainerRef.current; const minuteEl = minuteContainerRef.current;
-        const handleHourWheel = (e) => {
-            e.preventDefault();
-            let nextH = e.deltaY > 0 ? hourRef.current + 1 : hourRef.current - 1;
-            if (nextH < minHour) nextH = maxHour; if (nextH > maxHour) nextH = minHour;
-            onHourChange(nextH);
-        };
-        const handleMinuteWheel = (e) => {
-            e.preventDefault();
-            let nextM = e.deltaY > 0 ? minuteRef.current + 1 : minuteRef.current - 1;
-            if (nextM < 0) nextM = 59; if (nextM > 59) nextM = 0;
-            onMinuteChange(nextM);
-        };
-        if (hourEl) hourEl.addEventListener('wheel', handleHourWheel, { passive: false });
-        if (minuteEl) minuteEl.addEventListener('wheel', handleMinuteWheel, { passive: false });
-        return () => {
-            if (hourEl) hourEl.removeEventListener('wheel', handleHourWheel);
-            if (minuteEl) minuteEl.removeEventListener('wheel', handleMinuteWheel);
-        };
-    }, [minHour, maxHour, onHourChange, onMinuteChange]);
-
-    const handleBlurH = () => {
-        setIsEditingH(false);
-        let num = parseInt(tempH, 10);
-        if (isNaN(num)) num = hour;
-        if (num < minHour) num = minHour; if (num > maxHour) num = maxHour;
-        setTempH(String(num).padStart(2, '0')); onHourChange(num);
-    };
-
-    const handleBlurM = () => {
-        setIsEditingM(false);
-        let num = parseInt(tempM, 10);
-        if (isNaN(num)) num = minute;
-        if (num < 0) num = 0; if (num > 59) num = 59;
-        setTempM(String(num).padStart(2, '0')); onMinuteChange(num);
-    };
-
-    const prevH = hour - 1 < minHour ? maxHour : hour - 1; const nextH = hour + 1 > maxHour ? minHour : hour + 1;
-    const prevM = minute - 1 < 0 ? 59 : minute - 1; const nextM = minute + 1 > 59 ? 0 : minute + 1;
-
-    return (
-        <div className="space-y-1">
-            <label className="block text-[11px] font-extrabold text-gray-500 uppercase text-center tracking-wide">{label}</label>
-            <div className="flex items-center justify-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-2 shadow-inner">
-                <div ref={hourContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1 w-12">
-                    <div onClick={() => onHourChange(prevH)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevH).padStart(2, '0')}</div>
-                    <div className="w-full flex justify-center">
-                        {isEditingH ? (
-                            <input type="number" autoFocus value={tempH} onChange={(e) => setTempH(e.target.value)} onBlur={handleBlurH} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurH(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
-                        ) : (
-                            <div onClick={() => setIsEditingH(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(hour).padStart(2, '0')}</div>
-                        )}
-                    </div>
-                    <div onClick={() => onHourChange(nextH)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(nextH).padStart(2, '0')}</div>
-                </div>
-                <span className="font-black text-gray-300 text-lg pb-1">:</span>
-                <div ref={minuteContainerRef} className="flex flex-col items-center justify-center select-none cursor-ns-resize px-1 w-12">
-                    <div onClick={() => onMinuteChange(prevM)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(prevM).padStart(2, '0')}</div>
-                    <div className="w-full flex justify-center">
-                        {isEditingM ? (
-                            <input type="number" autoFocus value={tempM} onChange={(e) => setTempM(e.target.value)} onBlur={handleBlurM} onKeyDown={(e) => { if (e.key === 'Enter') handleBlurM(); }} onFocus={(e) => e.target.select()} className="w-full bg-white border-2 border-blue-500 rounded-lg text-lg font-black text-[#0B1E3F] text-center outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"/>
-                        ) : (
-                            <div onClick={() => setIsEditingM(true)} className="text-xl font-black text-[#0B1E3F] bg-white w-full text-center py-1 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 cursor-pointer">{String(minute).padStart(2, '0')}</div>
-                        )}
-                    </div>
-                    <div onClick={() => onMinuteChange(nextM)} className="text-gray-400 text-[11px] font-semibold hover:text-gray-600 py-0.5 cursor-pointer">{String(nextM).padStart(2, '0')}</div>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export default function ScheduleTab({ week }) {
     const [lichLam, setLichLam] = useState([]);
@@ -131,12 +21,12 @@ export default function ScheduleTab({ week }) {
     
     const [hoveredColReg, setHoveredColReg] = useState(null); 
     const [hoveredColShift, setHoveredColShift] = useState(null); 
-    
     const [holidayMultipliers, setHolidayMultipliers] = useState({});
 
     const userRole = (localStorage.getItem('vai_tro') || '').trim().toUpperCase();
     const isManager = userRole === 'QUAN_LY' || userRole === 'QUẢN LÝ' || userRole === 'ADMIN' || userRole === 'MANAGER';
 
+    // UI States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [selectedShiftId, setSelectedShiftId] = useState(null);
@@ -149,11 +39,23 @@ export default function ScheduleTab({ week }) {
     const [branchForm, setBranchForm] = useState({ id: '', ten_chi_nhanh: '', luong_co_ban_mot_gio: 25000, phu_cap_theo_gio: 0, phu_cap_co_dinh: 0, khau_tru_theo_gio: 0, ly_do_khau_tru: '' });
     const [isEditingBranch, setIsEditingBranch] = useState(false);
 
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+
     const [formData, setFormData] = useState({
         id_nguoi_dung: '', ho_ten: '', ngay_lam: '', gio_bat_dau_h: 8, gio_bat_dau_m: 0, gio_ket_thuc_h: 12, gio_ket_thuc_m: 0, id_chi_nhanh: '1', he_so_ngay_le: 1
     });
 
     const [budgetStatsList, setBudgetStatsList] = useState([]);
+
+    const isAnyModalOpen = isModalOpen || isRegModalOpen || isBranchModalOpen || confirmDialog.isOpen;
+    useEffect(() => {
+        if (isAnyModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isAnyModalOpen]);
 
     const getWeekDates = (startDateString) => {
         const dates = [];
@@ -307,7 +209,7 @@ export default function ScheduleTab({ week }) {
             let pastSpent = 0;             
             let futurePartialLimits = 0;   
             let futureFullWeightSum = 0;   
-            let cumulativeSpent = 0; // Lũy kế đã chi tính đến tuần đang xem
+            let cumulativeSpent = 0; 
             let totalMonthSpent = 0;       
 
             let viewedWeekStats = null;
@@ -367,7 +269,6 @@ export default function ScheduleTab({ week }) {
 
                 totalMonthSpent += actualSpent;
                 
-                // Lũy kế đến tuần đang xem (bao gồm các tuần trước đó và tuần hiện tại)
                 if (wStartStr <= week.start) {
                     cumulativeSpent += actualSpent;
                 }
@@ -413,7 +314,7 @@ export default function ScheduleTab({ week }) {
                     allocatedThisWeek,
                     spentThisWeek: viewedWeekStats.actualSpent,
                     spentTotalMonth: totalMonthSpent,
-                    cumulativeSpent: cumulativeSpent, // Truyền lũy kế vào state
+                    cumulativeSpent: cumulativeSpent, 
                     targetMonth: m,
                     targetYear: y,
                     daysInWeekForMonth: viewedWeekStats.daysInMonth,
@@ -463,10 +364,19 @@ export default function ScheduleTab({ week }) {
         } catch (err) { alert("Lỗi khi lưu đăng ký ca!"); }
     };
 
-    const handleDeleteRegistration = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn hủy đăng ký này?")) return;
-        try { await axiosClient.delete(`/shifts/registrations/${selectedRegId}`); setIsRegModalOpen(false); socket.emit('schedule_changed'); } 
-        catch (err) { alert("Lỗi khi hủy đăng ký!"); }
+    const handleDeleteRegistration = () => {
+        setConfirmDialog({
+            isOpen: true,
+            message: "Bạn có chắc chắn muốn hủy đăng ký nguyện vọng này?",
+            onConfirm: async () => {
+                try { 
+                    await axiosClient.delete(`/shifts/registrations/${selectedRegId}`); 
+                    setIsRegModalOpen(false); 
+                    setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+                    socket.emit('schedule_changed'); 
+                } catch (err) { alert("Lỗi khi hủy đăng ký!"); setConfirmDialog({ isOpen: false, message: '', onConfirm: null }); }
+            }
+        });
     };
 
     const handleOpenAdd = (nhanVien, dateKey) => {
@@ -524,18 +434,19 @@ export default function ScheduleTab({ week }) {
         } catch (err) { alert(`Lỗi: ${err.response?.data?.error || err.message}`); }
     };
 
-    const handleDeleteShift = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa ca làm này?")) return;
-        try { await axiosClient.delete(`/shifts/delete/${selectedShiftId}`); setIsModalOpen(false); socket.emit('schedule_changed'); } 
-        catch (err) { alert("Lỗi khi xóa ca làm!"); }
-    };
-
-    const formatVND = (val) => {
-        if (val === '' || val === null || val === undefined) return '';
-        const strVal = String(val).replace(/\D/g, '');
-        if (strVal === '') return '';
-        const num = parseInt(strVal, 10);
-        return isNaN(num) ? '' : num.toLocaleString('vi-VN');
+    const handleDeleteShift = () => {
+        setConfirmDialog({
+            isOpen: true,
+            message: "Bạn có chắc chắn muốn xóa ca làm này khỏi lịch thực tế?",
+            onConfirm: async () => {
+                try { 
+                    await axiosClient.delete(`/shifts/delete/${selectedShiftId}`); 
+                    setIsModalOpen(false); 
+                    setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+                    socket.emit('schedule_changed'); 
+                } catch (err) { alert("Lỗi khi xóa ca làm!"); setConfirmDialog({ isOpen: false, message: '', onConfirm: null }); }
+            }
+        });
     };
 
     const handleCurrencyChange = (field, val) => {
@@ -562,9 +473,18 @@ export default function ScheduleTab({ week }) {
         } catch (err) { alert("Lỗi lưu chi nhánh!"); }
     };
 
-    const handleDeleteBranch = async (id) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa chi nhánh này?")) return;
-        try { await axiosClient.delete(`/branches/${id}`); fetchBranches(); } catch (err) { alert("Không thể xóa chi nhánh đang có dữ liệu!"); }
+    const handleDeleteBranch = (id) => {
+        setConfirmDialog({
+            isOpen: true,
+            message: "Hành động này sẽ xóa hoàn toàn chi nhánh khỏi hệ thống. Bạn có chắc chắn?",
+            onConfirm: async () => {
+                try { 
+                    await axiosClient.delete(`/branches/${id}`); 
+                    fetchBranches(); 
+                    setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+                } catch (err) { alert("Không thể xóa chi nhánh đang có dữ liệu!"); setConfirmDialog({ isOpen: false, message: '', onConfirm: null }); }
+            }
+        });
     };
 
     const shiftsByUserIdAndDate = lichLam.reduce((acc, ca) => {
@@ -580,9 +500,9 @@ export default function ScheduleTab({ week }) {
     const nhanVienDangKyList = nhanVienList.filter(nv => !((nv.ho_ten || '').toLowerCase().includes('bích ngọc') || (nv.ho_ten || '').toLowerCase().includes('văn hiền')));
 
     return (
-        <div className="space-y-5 text-sm px-4 sm:px-6">
+        <div className="space-y-5 text-sm px-4 sm:px-6 relative">
             {/* 1. BẢNG ĐĂNG KÝ NGUYỆN VỌNG */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden relative z-10">
                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
                     <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase flex items-center gap-2">
                         1. Đăng Ký Lịch Làm Việc Tuần Này
@@ -596,7 +516,7 @@ export default function ScheduleTab({ week }) {
                     <table className="w-full text-center border-collapse border border-slate-300 min-w-[700px]" onMouseLeave={() => setHoveredColReg(null)}>
                         <thead className="bg-[#0B1E3F] text-white uppercase text-xs">
                             <tr>
-                                <th className="p-3 border border-slate-300 text-left sticky left-0 bg-[#0B1E3F] z-10 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
+                                <th className="p-3 border border-slate-300 text-left sticky left-0 bg-[#0B1E3F] z-20 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
                                 {weekDates.map((date, index) => {
                                     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
                                     return (
@@ -617,7 +537,7 @@ export default function ScheduleTab({ week }) {
                                 const regObj = dangKyCa[nv.id] || { raw: {}, data: {} };
                                 return (
                                     <tr key={nv.id} className="group hover:bg-slate-100">
-                                        <td className="p-3 font-bold text-[#0B1E3F] border border-slate-300 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-10 truncate max-w-[140px] text-sm">
+                                        <td className="p-3 font-bold text-[#0B1E3F] border border-slate-300 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-20 truncate max-w-[140px] text-sm">
                                             {nv.ho_ten}
                                         </td>
                                         {weekDates.map((date, index) => {
@@ -649,7 +569,7 @@ export default function ScheduleTab({ week }) {
             </div>
 
             {/* 2. BẢNG LỊCH THỰC TẾ */}
-            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden relative z-10">
                 <div className="p-4 bg-[#FFF8E7] border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
                     <h2 className="text-sm font-extrabold text-[#0B1E3F] uppercase flex items-center gap-2">
                         2. Bảng Lịch Làm Việc Thực Tế
@@ -663,7 +583,7 @@ export default function ScheduleTab({ week }) {
                     <table className="w-full text-center border-collapse border border-slate-300 min-w-[700px]" onMouseLeave={() => setHoveredColShift(null)}>
                         <thead className="bg-[#0B1E3F] text-white uppercase text-xs">
                             <tr>
-                                <th className="p-3 border border-slate-300 text-left sticky left-0 bg-[#0B1E3F] z-10 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
+                                <th className="p-3 border border-slate-300 text-left sticky left-0 bg-[#0B1E3F] z-20 w-28 sm:w-40 align-middle">HỌ VÀ TÊN</th>
                                 {weekDates.map((date, index) => {
                                     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
                                     const dKey = formatDateKey(date);
@@ -699,7 +619,7 @@ export default function ScheduleTab({ week }) {
                         <tbody className="bg-white">
                             {nhanVienList.map((nv) => (
                                 <tr key={nv.id} className="group hover:bg-slate-100">
-                                    <td className="p-3 font-bold text-[#0B1E3F] border border-slate-300 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-10 truncate max-w-[140px] text-sm">
+                                    <td className="p-3 font-bold text-[#0B1E3F] border border-slate-300 text-left sticky left-0 bg-white group-hover:bg-slate-100 z-20 truncate max-w-[140px] text-sm">
                                         {nv.ho_ten} {nv.vai_tro === 'QUAN_LY' && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded ml-1 font-semibold">QL</span>}
                                     </td>
                                     {weekDates.map((date, index) => {
@@ -755,7 +675,7 @@ export default function ScheduleTab({ week }) {
                 const isOver = stat.spentThisWeek > stat.allocatedThisWeek && !stat.isPastSegment;
                 
                 return (
-                    <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-5">
+                    <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-5 relative z-10">
                         <div className="p-4 bg-[#E8F0FE] border-b border-blue-100 flex justify-between items-center flex-wrap gap-2">
                             <h2 className="text-sm font-extrabold text-blue-900 uppercase flex items-center gap-2">
                                 <Wallet size={18} className="text-blue-600"/> 
@@ -807,8 +727,8 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL THÊM / SỬA ĐĂNG KÝ NGUYỆN VỌNG */}
             {isRegModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up">
                         <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
                             <h3 className="font-bold uppercase tracking-wider text-sm">{regModalMode === 'add' ? 'Đăng Ký Nguyện Vọng' : 'Chỉnh Sửa Đăng Ký'}</h3>
                             <button onClick={() => setIsRegModalOpen(false)} className="hover:bg-white/20 p-1.5 rounded-md cursor-pointer"><X size={18}/></button>
@@ -833,8 +753,8 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up my-auto">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up">
                         <div className={`p-4 flex justify-between items-center text-white ${modalMode === 'add' ? 'bg-[#0B1E3F]' : 'bg-amber-600'}`}>
                             <h3 className="font-bold uppercase tracking-wider text-sm">{modalMode === 'add' ? 'Thêm Ca Làm Mới' : 'Chỉnh Sửa Ca Làm'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="hover:bg-white/20 p-1.5 rounded-md cursor-pointer"><X size={18}/></button>
@@ -875,7 +795,7 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL QUẢN LÝ CHI NHÁNH */}
             {isBranchModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
                         <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
                             <h3 className="font-bold uppercase tracking-wider text-sm flex items-center gap-2"><Settings size={18} className="text-[#FFD166]"/> Quản Lý Chi Nhánh</h3>
@@ -949,6 +869,25 @@ export default function ScheduleTab({ week }) {
                                     ))}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* HỘP THOẠI XÁC NHẬN CHUNG (TÁI SỬ DỤNG CAO NHẤT z-[200]) */}
+            {confirmDialog.isOpen && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up">
+                        <div className="p-5 text-center space-y-4 mt-4">
+                            <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-2 shadow-inner">
+                                <AlertTriangle size={32} strokeWidth={2.5} />
+                            </div>
+                            <h3 className="text-lg font-black text-[#0B1E3F]">Xác nhận thao tác</h3>
+                            <p className="text-sm font-semibold text-gray-600 px-2 leading-relaxed">{confirmDialog.message}</p>
+                        </div>
+                        <div className="p-5 flex gap-3 mt-2">
+                            <button onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })} className="flex-1 py-3.5 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition cursor-pointer">Hủy bỏ</button>
+                            <button onClick={confirmDialog.onConfirm} className="flex-1 py-3.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition cursor-pointer">Đồng ý</button>
                         </div>
                     </div>
                 </div>
