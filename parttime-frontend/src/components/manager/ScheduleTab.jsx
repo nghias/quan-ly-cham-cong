@@ -173,7 +173,6 @@ export default function ScheduleTab({ week }) {
     };
     const weekDates = getWeekDates(week.start);
 
-    // HÀM TẢI DỮ LIỆU ĐĂNG KÝ
     const fetchRegistrations = async (start, end) => {
         try {
             const res = await axiosClient.get('/shifts/registrations', { params: { startDate: start, endDate: end } });
@@ -193,7 +192,6 @@ export default function ScheduleTab({ week }) {
         } catch (err) {}
     };
 
-    // HÀM TẢI LỊCH LÀM THỰC TẾ
     const fetchShifts = async (start, end) => {
         try {
             const res = await axiosClient.get('/shifts', { params: { startDate: `${start} 00:00:00`, endDate: `${end} 23:59:59` } });
@@ -309,6 +307,7 @@ export default function ScheduleTab({ week }) {
             let pastSpent = 0;             
             let futurePartialLimits = 0;   
             let futureFullWeightSum = 0;   
+            let cumulativeSpent = 0; // Lũy kế đã chi tính đến tuần đang xem
             let totalMonthSpent = 0;       
 
             let viewedWeekStats = null;
@@ -367,6 +366,12 @@ export default function ScheduleTab({ week }) {
                 });
 
                 totalMonthSpent += actualSpent;
+                
+                // Lũy kế đến tuần đang xem (bao gồm các tuần trước đó và tuần hiện tại)
+                if (wStartStr <= week.start) {
+                    cumulativeSpent += actualSpent;
+                }
+
                 const isFull = daysInMonth === 7;
 
                 if (isPastReal) {
@@ -408,6 +413,7 @@ export default function ScheduleTab({ week }) {
                     allocatedThisWeek,
                     spentThisWeek: viewedWeekStats.actualSpent,
                     spentTotalMonth: totalMonthSpent,
+                    cumulativeSpent: cumulativeSpent, // Truyền lũy kế vào state
                     targetMonth: m,
                     targetYear: y,
                     daysInWeekForMonth: viewedWeekStats.daysInMonth,
@@ -791,7 +797,7 @@ export default function ScheduleTab({ week }) {
                                     }
                                 </span>
                                 <span className="text-gray-500">
-                                    Lũy kế tháng {stat.targetMonth}: {stat.spentTotalMonth.toLocaleString('vi-VN')}đ / 10.000.000đ
+                                    Quỹ lương đã chi (đến tuần này): {stat.cumulativeSpent.toLocaleString('vi-VN')}đ / 10.000.000đ
                                 </span>
                             </div>
                         </div>
