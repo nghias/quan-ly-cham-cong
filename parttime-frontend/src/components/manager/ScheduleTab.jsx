@@ -18,7 +18,6 @@ export default function ScheduleTab({ week }) {
     const [monthShifts, setMonthShifts] = useState([]);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
-    
     const [hoveredColReg, setHoveredColReg] = useState(null); 
     const [hoveredColShift, setHoveredColShift] = useState(null); 
     const [holidayMultipliers, setHolidayMultipliers] = useState({});
@@ -47,14 +46,20 @@ export default function ScheduleTab({ week }) {
 
     const [budgetStatsList, setBudgetStatsList] = useState([]);
 
+    // KHÓA CUỘN NỀN KHI CÓ MODAL
     const isAnyModalOpen = isModalOpen || isRegModalOpen || isBranchModalOpen || confirmDialog.isOpen;
     useEffect(() => {
         if (isAnyModalOpen) {
             document.body.style.overflow = 'hidden';
+            document.body.style.height = '100vh';
         } else {
             document.body.style.overflow = 'unset';
+            document.body.style.height = 'auto';
         }
-        return () => { document.body.style.overflow = 'unset'; };
+        return () => { 
+            document.body.style.overflow = 'unset'; 
+            document.body.style.height = 'auto';
+        };
     }, [isAnyModalOpen]);
 
     const getWeekDates = (startDateString) => {
@@ -727,7 +732,7 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL THÊM / SỬA ĐĂNG KÝ NGUYỆN VỌNG */}
             {isRegModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                <div className="fixed top-0 left-0 w-full h-screen bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up">
                         <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
                             <h3 className="font-bold uppercase tracking-wider text-sm">{regModalMode === 'add' ? 'Đăng Ký Nguyện Vọng' : 'Chỉnh Sửa Đăng Ký'}</h3>
@@ -742,9 +747,13 @@ export default function ScheduleTab({ week }) {
                                 <WheelTimePicker label="Bắt Đầu" hour={formData.gio_bat_dau_h} minute={formData.gio_bat_dau_m} minHour={0} maxHour={23} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_bat_dau_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_bat_dau_m: m }))} />
                                 <WheelTimePicker label="Kết Thúc" hour={formData.gio_ket_thuc_h} minute={formData.gio_ket_thuc_m} minHour={1} maxHour={24} onHourChange={(h) => setFormData(prev => ({ ...prev, gio_ket_thuc_h: h }))} onMinuteChange={(m) => setFormData(prev => ({ ...prev, gio_ket_thuc_m: m }))} />
                             </div>
-                            <div className="pt-4 border-t mt-4 flex items-center justify-between gap-3">
-                                {regModalMode === 'edit' ? <button type="button" onClick={handleDeleteRegistration} className="px-4 py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md flex-1"><Trash2 size={16}/> Hủy Đăng Ký</button> : <button type="button" onClick={() => setIsRegModalOpen(false)} className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer shadow-2xs flex-1 text-center">Hủy Bỏ</button>}
-                                <button type="submit" className="px-4 py-3 text-sm font-bold text-white rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-1 bg-emerald-600 hover:bg-emerald-700"><Check size={16}/> Xác Nhận</button>
+                            <div className="pt-4 border-t mt-4 grid grid-cols-2 gap-3">
+                                {regModalMode === 'edit' ? (
+                                    <button type="button" onClick={handleDeleteRegistration} className="py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md w-full">Hủy Bỏ</button>
+                                ) : (
+                                    <button type="button" onClick={() => setIsRegModalOpen(false)} className="py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl shadow-2xs w-full">Hủy Bỏ</button>
+                                )}
+                                <button type="submit" className="py-3 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md w-full">Xác Nhận</button>
                             </div>
                         </form>
                     </div>
@@ -753,7 +762,7 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL THÊM / SỬA CA LÀM THỰC TẾ */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                <div className="fixed top-0 left-0 w-full h-screen bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in-up">
                         <div className={`p-4 flex justify-between items-center text-white ${modalMode === 'add' ? 'bg-[#0B1E3F]' : 'bg-amber-600'}`}>
                             <h3 className="font-bold uppercase tracking-wider text-sm">{modalMode === 'add' ? 'Thêm Ca Làm Mới' : 'Chỉnh Sửa Ca Làm'}</h3>
@@ -784,9 +793,13 @@ export default function ScheduleTab({ week }) {
                                     </select>
                                 </div>
                             </div>
-                            <div className="pt-4 border-t mt-4 flex items-center justify-between gap-3">
-                                {modalMode === 'edit' ? <button type="button" onClick={handleDeleteShift} className="px-4 py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md flex-1"><Trash2 size={16}/> Xóa Ca</button> : <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl cursor-pointer shadow-2xs flex-1 text-center">Hủy Bỏ</button>}
-                                <button type="submit" className={`px-4 py-3 text-sm font-bold text-white rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-1 ${modalMode === 'add' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600 text-[#0B1E3F]'}`}>{modalMode === 'add' ? <><Check size={16}/> Lưu Lịch</> : <><Edit size={16}/> Cập Nhật</>}</button>
+                            <div className="pt-4 border-t mt-4 grid grid-cols-2 gap-3">
+                                {modalMode === 'edit' ? (
+                                    <button type="button" onClick={handleDeleteShift} className="py-3 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md w-full">Xóa Ca</button>
+                                ) : (
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="py-3 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl shadow-2xs w-full">Hủy Bỏ</button>
+                                )}
+                                <button type="submit" className={`py-3 text-sm font-bold text-white rounded-xl shadow-md w-full ${modalMode === 'add' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600 text-[#0B1E3F]'}`}>{modalMode === 'add' ? 'Lưu Lịch' : 'Cập Nhật'}</button>
                             </div>
                         </form>
                     </div>
@@ -795,8 +808,8 @@ export default function ScheduleTab({ week }) {
 
             {/* MODAL QUẢN LÝ CHI NHÁNH */}
             {isBranchModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up my-auto">
+                <div className="fixed top-0 left-0 w-full h-screen bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
                         <div className="p-4 bg-[#0B1E3F] text-white flex justify-between items-center">
                             <h3 className="font-bold uppercase tracking-wider text-sm flex items-center gap-2"><Settings size={18} className="text-[#FFD166]"/> Quản Lý Chi Nhánh</h3>
                             <button onClick={() => setIsBranchModalOpen(false)} className="hover:bg-white/20 p-1.5 rounded-md cursor-pointer"><X size={18}/></button>
@@ -874,9 +887,9 @@ export default function ScheduleTab({ week }) {
                 </div>
             )}
 
-            {/* HỘP THOẠI XÁC NHẬN CHUNG (TÁI SỬ DỤNG CAO NHẤT z-[200]) */}
+            {/* HỘP THOẠI XÁC NHẬN CHUNG (TÁI SỬ DỤNG CAO NHẤT z-[99999]) */}
             {confirmDialog.isOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+                <div className="fixed top-0 left-0 w-full h-screen bg-black/70 backdrop-blur-sm flex items-center justify-center z-[99999] p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up">
                         <div className="p-5 text-center space-y-4 mt-4">
                             <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-2 shadow-inner">
@@ -885,9 +898,9 @@ export default function ScheduleTab({ week }) {
                             <h3 className="text-lg font-black text-[#0B1E3F]">Xác nhận thao tác</h3>
                             <p className="text-sm font-semibold text-gray-600 px-2 leading-relaxed">{confirmDialog.message}</p>
                         </div>
-                        <div className="p-5 flex gap-3 mt-2">
-                            <button onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })} className="flex-1 py-3.5 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition cursor-pointer">Hủy bỏ</button>
-                            <button onClick={confirmDialog.onConfirm} className="flex-1 py-3.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition cursor-pointer">Đồng ý</button>
+                        <div className="p-5 grid grid-cols-2 gap-3 mt-2">
+                            <button onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })} className="py-3.5 text-sm font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-xl transition cursor-pointer w-full">Hủy bỏ</button>
+                            <button onClick={confirmDialog.onConfirm} className="py-3.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition cursor-pointer w-full">Đồng ý</button>
                         </div>
                     </div>
                 </div>

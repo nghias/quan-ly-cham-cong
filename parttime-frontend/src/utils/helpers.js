@@ -1,6 +1,5 @@
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+export const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// Hàm bóc tách múi giờ chuẩn xác từ MySQL
 export function parseMySqlDateTime(dateTimeStr) {
     if (!dateTimeStr) return { year: 0, month: 0, day: 0, hour: 0, minute: 0, dateKey: '' };
     if (isLocal) {
@@ -25,7 +24,6 @@ export function parseMySqlDateTime(dateTimeStr) {
     }
 }
 
-// Hàm định dạng tiền tệ VNĐ hiển thị lên Input
 export const formatVND = (val) => {
     if (val === '' || val === null || val === undefined) return '';
     const strVal = String(val).replace(/\D/g, '');

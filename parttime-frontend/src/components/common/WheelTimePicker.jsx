@@ -52,10 +52,8 @@ export default function WheelTimePicker({ hour, minute, onHourChange, onMinuteCh
         setTempM(String(num).padStart(2, '0')); onMinuteChange(num);
     };
 
-    const prevH = hour - 1 < minHour ? maxHour : hour - 1; 
-    const nextH = hour + 1 > maxHour ? minHour : hour + 1;
-    const prevM = minute - 1 < 0 ? 59 : minute - 1; 
-    const nextM = minute + 1 > 59 ? 0 : minute + 1;
+    const prevH = hour - 1 < minHour ? maxHour : hour - 1; const nextH = hour + 1 > maxHour ? minHour : hour + 1;
+    const prevM = minute - 1 < 0 ? 59 : minute - 1; const nextM = minute + 1 > 59 ? 0 : minute + 1;
 
     return (
         <div className="space-y-1">
