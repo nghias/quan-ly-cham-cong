@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { StickyNote, Calculator, Plus, Trash2, CheckCircle2, Circle, RotateCcw } from 'lucide-react';
+import { StickyNote, Calculator, Plus, Trash2, CheckCircle2, Circle, RotateCcw, PenLine, Receipt } from 'lucide-react';
 
 export default function NotesTab() {
     const { user } = useContext(AuthContext);
     const userId = user?.id || localStorage.getItem('id') || 'guest';
     const storageKey = `sunday_notes_${userId}`;
 
-    // 1. STATE CHO GHI CHÚ
+    // ---------------- STATE CHO GHI CHÚ ----------------
     const [notes, setNotes] = useState([]);
     const [newNote, setNewNote] = useState('');
 
-    // Load ghi chú từ LocalStorage
     useEffect(() => {
         const savedNotes = localStorage.getItem(storageKey);
         if (savedNotes) {
@@ -19,7 +18,6 @@ export default function NotesTab() {
         }
     }, [storageKey]);
 
-    // Save ghi chú vào LocalStorage mỗi khi có thay đổi
     useEffect(() => {
         localStorage.setItem(storageKey, JSON.stringify(notes));
     }, [notes, storageKey]);
@@ -44,7 +42,7 @@ export default function NotesTab() {
         setNotes(notes.filter(note => note.id !== id));
     };
 
-    // 2. STATE CHO MÁY ĐẾM TIỀN
+    // ---------------- STATE CHO MÁY ĐẾM TIỀN ----------------
     const denominations = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000];
     const [bills, setBills] = useState(
         denominations.reduce((acc, val) => ({ ...acc, [val]: '' }), {})
@@ -56,7 +54,9 @@ export default function NotesTab() {
     };
 
     const resetBills = () => {
-        setBills(denominations.reduce((acc, val) => ({ ...acc, [val]: '' }), {}));
+        if(window.confirm("Bạn muốn xóa trắng bảng đếm tiền?")) {
+            setBills(denominations.reduce((acc, val) => ({ ...acc, [val]: '' }), {}));
+        }
     };
 
     const totalMoney = denominations.reduce((sum, val) => {
@@ -68,41 +68,56 @@ export default function NotesTab() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             
             {/* CỘT 1: GHI CHÚ CÔNG VIỆC */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
-                <div className="p-4 bg-[#0B1E3F] text-white flex items-center gap-2 shrink-0">
-                    <StickyNote size={18} className="text-[#FFD166]" />
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[650px] relative">
+                <div className="p-4 bg-[#0B1E3F] text-white flex items-center gap-2 shrink-0 shadow-sm z-10">
+                    <PenLine size={18} className="text-[#FFD166]" />
                     <h2 className="text-sm font-black uppercase tracking-wider">Ghi chú công việc</h2>
                 </div>
                 
-                <form onSubmit={handleAddNote} className="p-4 border-b border-gray-100 shrink-0 bg-gray-50 flex gap-2">
-                    <input 
-                        type="text" 
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        placeholder="Nhập việc cần làm..."
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                    <button type="submit" className="bg-[#0B1E3F] hover:bg-[#1D3557] text-white px-4 py-2.5 rounded-xl transition shadow-sm font-bold flex items-center gap-1 cursor-pointer">
-                        <Plus size={18} /> Thêm
+                {/* Form Nhập Ghi Chú */}
+                <form onSubmit={handleAddNote} className="p-4 border-b border-gray-200 shrink-0 bg-[#FFFBEB] flex gap-3 shadow-inner">
+                    <div className="relative flex-1">
+                        <input 
+                            type="text" 
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                            placeholder="Hôm nay bạn cần làm gì?..."
+                            className="w-full pl-4 pr-4 py-3 rounded-xl border border-yellow-300 text-sm font-bold text-gray-800 outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 bg-white placeholder-gray-400 transition shadow-sm"
+                        />
+                    </div>
+                    <button type="submit" className="bg-[#FFD166] hover:bg-yellow-400 text-[#0B1E3F] px-5 py-3 rounded-xl transition shadow-md font-black flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95">
+                        <Plus size={18} strokeWidth={3} /> Thêm
                     </button>
                 </form>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50/50">
+                {/* Danh sách Ghi Chú */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/80 custom-scrollbar">
                     {notes.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400 opacity-70">
-                            <StickyNote size={48} className="mb-3" />
-                            <p className="text-sm font-medium">Chưa có ghi chú nào.</p>
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 opacity-60">
+                            <StickyNote size={64} className="mb-4 text-gray-300" strokeWidth={1.5} />
+                            <p className="text-sm font-bold">Chưa có ghi chú nào.</p>
+                            <p className="text-xs mt-1">Hãy thêm công việc cần làm vào ô bên trên nhé!</p>
                         </div>
                     ) : (
                         notes.map(note => (
-                            <div key={note.id} className={`flex items-start gap-3 p-3 rounded-xl border transition ${note.completed ? 'bg-gray-100 border-gray-200 opacity-60' : 'bg-white border-blue-100 shadow-sm'}`}>
-                                <button onClick={() => toggleNote(note.id)} className="mt-0.5 shrink-0 text-emerald-600 hover:scale-110 transition cursor-pointer">
-                                    {note.completed ? <CheckCircle2 size={20} /> : <Circle size={20} className="text-gray-400" />}
+                            <div 
+                                key={note.id} 
+                                className={`group flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md ${
+                                    note.completed 
+                                        ? 'bg-gray-100 border-gray-200 opacity-60 scale-[0.98]' 
+                                        : 'bg-white border-l-4 border-l-yellow-400 border-y-gray-200 border-r-gray-200 hover:-translate-y-0.5'
+                                }`}
+                            >
+                                <button onClick={() => toggleNote(note.id)} className="mt-0.5 shrink-0 transition cursor-pointer">
+                                    {note.completed 
+                                        ? <CheckCircle2 size={22} className="text-emerald-500" /> 
+                                        : <Circle size={22} className="text-gray-300 hover:text-emerald-400" />
+                                    }
                                 </button>
-                                <p className={`flex-1 text-sm font-medium break-words ${note.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                                <p className={`flex-1 text-sm leading-relaxed pt-0.5 break-words ${note.completed ? 'line-through text-gray-500 font-medium' : 'text-gray-800 font-bold'}`}>
                                     {note.text}
                                 </p>
-                                <button onClick={() => deleteNote(note.id)} className="shrink-0 text-gray-400 hover:text-red-500 transition cursor-pointer p-0.5">
+                                <button onClick={() => deleteNote(note.id)} className="shrink-0 text-gray-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition cursor-pointer opacity-0 group-hover:opacity-100">
                                     <Trash2 size={16} />
                                 </button>
                             </div>
@@ -112,52 +127,91 @@ export default function NotesTab() {
             </div>
 
             {/* CỘT 2: CÔNG CỤ ĐẾM TIỀN */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
-                <div className="p-4 bg-emerald-700 text-white flex justify-between items-center shrink-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[650px] relative">
+                <div className="p-4 bg-emerald-700 text-white flex justify-between items-center shrink-0 shadow-sm z-10">
                     <div className="flex items-center gap-2">
-                        <Calculator size={18} className="text-emerald-200" />
+                        <Receipt size={18} className="text-emerald-200" />
                         <h2 className="text-sm font-black uppercase tracking-wider">Trợ lý đếm tiền</h2>
                     </div>
-                    <button onClick={resetBills} className="text-xs flex items-center gap-1 font-bold bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition cursor-pointer">
-                        <RotateCcw size={12}/> Làm lại
+                    <button onClick={resetBills} className="text-xs flex items-center gap-1.5 font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition cursor-pointer shadow-sm">
+                        <RotateCcw size={14}/> Làm lại
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-5 bg-gray-50/50">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                        {denominations.map(val => (
-                            <div key={val} className="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-xs hover:border-emerald-300 transition">
-                                <span className={`w-20 text-right font-black text-sm ${val >= 100000 ? 'text-blue-800' : 'text-gray-700'}`}>
-                                    {val.toLocaleString('vi-VN')}đ
-                                </span>
-                                <span className="text-gray-400 text-xs font-bold shrink-0">x</span>
-                                <div className="relative flex-1">
-                                    <input 
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={bills[val]}
-                                        onChange={(e) => handleBillChange(val, e.target.value)}
-                                        onFocus={(e) => e.target.select()}
-                                        placeholder="0"
-                                        className="w-full bg-gray-50 border border-gray-300 rounded-lg py-1.5 pl-3 pr-8 text-sm font-bold text-gray-900 outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition text-right"
-                                    />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">tờ</span>
+                {/* Tiêu đề Bảng */}
+                <div className="flex items-center px-6 py-3 bg-emerald-50 border-b border-emerald-100 shrink-0">
+                    <div className="w-[35%] text-xs font-black text-emerald-800 uppercase tracking-wide">Mệnh giá</div>
+                    <div className="w-[30%] text-xs font-black text-emerald-800 uppercase tracking-wide text-center">Số tờ</div>
+                    <div className="w-[35%] text-xs font-black text-emerald-800 uppercase tracking-wide text-right">Thành tiền</div>
+                </div>
+
+                {/* Danh sách nhập tiền */}
+                <div className="flex-1 overflow-y-auto p-2 bg-white custom-scrollbar">
+                    <div className="flex flex-col">
+                        {denominations.map(val => {
+                            const count = parseInt(bills[val], 10) || 0;
+                            const rowTotal = val * count;
+                            
+                            return (
+                                <div key={val} className="flex items-center px-4 py-2.5 border-b border-dashed border-gray-100 last:border-0 hover:bg-gray-50 transition rounded-lg">
+                                    
+                                    {/* Cột 1: Mệnh giá */}
+                                    <div className={`w-[35%] font-black text-[15px] ${val >= 100000 ? 'text-blue-900' : 'text-gray-700'}`}>
+                                        {val.toLocaleString('vi-VN')}
+                                    </div>
+                                    
+                                    {/* Cột 2: Số tờ (Input) */}
+                                    <div className="w-[30%] flex justify-center">
+                                        <div className="relative w-20">
+                                            <input 
+                                                type="number"
+                                                value={bills[val]}
+                                                onChange={(e) => handleBillChange(val, e.target.value)}
+                                                onFocus={(e) => e.target.select()}
+                                                placeholder="0"
+                                                className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2 text-sm font-bold text-center text-[#0B1E3F] outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Cột 3: Thành tiền */}
+                                    <div className="w-[35%] text-right font-black text-[15px]">
+                                        {rowTotal > 0 ? (
+                                            <span className="text-emerald-600">{rowTotal.toLocaleString('vi-VN')}</span>
+                                        ) : (
+                                            <span className="text-gray-300">0</span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
-                <div className="p-5 bg-emerald-50 border-t border-emerald-100 shrink-0">
+                {/* Tổng Cộng Cuối Trang */}
+                <div className="p-5 bg-emerald-50 border-t-2 border-emerald-200 shrink-0">
                     <div className="flex justify-between items-end">
-                        <span className="text-emerald-800 text-sm font-bold uppercase">Tổng cộng:</span>
-                        <span className="text-3xl font-black text-emerald-600 tracking-tight">
-                            {totalMoney.toLocaleString('vi-VN')} <span className="text-lg">VNĐ</span>
+                        <span className="text-emerald-800 text-sm font-black uppercase tracking-wider mb-1">Tổng cộng:</span>
+                        <span className="text-3xl font-black text-emerald-700 tracking-tight drop-shadow-sm">
+                            {totalMoney.toLocaleString('vi-VN')} <span className="text-lg font-bold">VNĐ</span>
                         </span>
                     </div>
                 </div>
             </div>
 
+            {/* CSS Xóa thanh cuộn xấu */}
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background-color: #cbd5e1;
+                    border-radius: 20px;
+                }
+            `}</style>
         </div>
     );
 }
